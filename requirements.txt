@@ -1,0 +1,6 @@
+numpy
+scipy
+matplotlib
+h5py
+# Note: Meep should be installed via Conda or system package manager.
+# e.g. conda install -c conda-forge pymeep

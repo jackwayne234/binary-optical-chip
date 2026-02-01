@@ -1,0 +1,19 @@
+Subject: Project Submission: A 3D-Printed Optical Computer that uses Color for Math
+
+Hi [Editor Name / Hackaday Tips Line],
+
+I’m an independent researcher working on a novel computing architecture, and I wanted to share my latest prototype: a **Wavelength-Division Ternary Computer**.
+
+Unlike standard optical computing (which just mimics binary), this system uses **Balanced Ternary Logic** (-1, 0, +1) encoded into visible light wavelengths (Red, Green, Blue). It physically demonstrates how we can bypass the "Radix Economy Penalty" that limits electronic ternary systems.
+
+**The Prototype:**
+*   **Size:** 24x24 inch optical breadboard.
+*   **Hardware:** ESP32, AS7341 Spectral Sensors, and custom 3D-printed mixing chambers.
+*   **Logic:** It performs math by physically mixing colors (e.g., Blue + Red = Purple = 0).
+
+I’ve published the theoretical foundation on Zenodo [Link] and am currently documenting the build process. I thought your audience might appreciate the "Garage Science" aspect of building a photonic computer with a 3D printer.
+
+You can check out the build logs and demo video here: [Link to Portfolio/Repo]
+
+Best,
+[Your Name]

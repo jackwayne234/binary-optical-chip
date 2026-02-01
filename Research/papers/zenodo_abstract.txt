@@ -1,0 +1,10 @@
+Wavelength-Division Ternary Logic: Bypassing the Radix Economy Penalty in Optical Computing
+
+Abstract:
+The Setun computer (Moscow State University, 1958) proved the viability of ternary logic by utilizing three distinct voltage levels to represent information. This work originates from a fundamental question inspired by that architecture: can we replace distinct voltage levels with distinct light colors (wavelengths) to bypass the limitations of modern electronics?
+
+Ternary (base-3) logic is mathematically optimal for computing systems, lying closest to Euler’s number e in the radix economy calculation. However, ternary computing has remained impractical due to the substantial hardware overhead required to distinguish three stable states using transistor-based circuits—typically requiring 40× more transistors per trit compared to bits.
+
+We propose a novel architecture based on wavelength-selection encoding with external wavelength sources. Unlike existing polarization-based or intensity-based approaches, our architecture treats wavelengths as analogous to the Setun's voltage rails, where external laser sources provide discrete wavelength inputs (e.g., λ1, λ2, λ3) and internal optical components perform wavelength-selective routing and logic operations.
+
+This approach fundamentally bypasses the radix economy penalty because wavelength differentiation cost is independent of the number of states, unlike transistor-based implementations where cost scales with radix. We show that this architecture could unlock the full 1.58× information density advantage of ternary logic while leveraging the inherent speed, parallelism, and low-power characteristics of photonic systems. This work presents the theoretical foundation and architectural principles for wavelength-encoded ternary optical computing and identifies key challenges for experimental realization.

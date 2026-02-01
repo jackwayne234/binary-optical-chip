@@ -1,0 +1,308 @@
+\documentclass[journal]{IEEEtran}
+
+% Packages
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{cite}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{float}
+
+% Correct hyphenation
+\hyphenation{op-tical net-works semi-conduc-tor}
+
+\begin{document}
+
+\title{Wavelength-Division Ternary Logic: Bypassing the Radix Economy Penalty in Optical Computing}
+
+\author{Christopher Riner%
+\thanks{Independent Researcher: Chesapeake, VA, US. Email: chrisriner45@gmail.com}}
+
+\maketitle
+
+\begin{abstract}
+Ternary (base-3) logic is mathematically optimal for computing systems, lying closest to Euler's number $e$ in the radix economy calculation. However, ternary computing has remained impractical due to the substantial hardware overhead required to distinguish three stable states using transistor-based circuits—typically requiring 40$\times$ more transistors per trit compared to bits. We propose a novel architecture for ternary optical computing based on wavelength-selection encoding with external wavelength sources. Unlike existing polarization-based or intensity-based approaches, our architecture treats wavelengths as analogous to voltage rails in analog computers, where external laser sources provide discrete wavelength inputs (e.g., $\lambda_1$, $\lambda_2$, $\lambda_3$) and internal optical components perform wavelength-selective routing and logic operations. This approach fundamentally bypasses the radix economy penalty because wavelength differentiation cost is independent of the number of states, unlike transistor-based implementations where cost scales with radix. We show that this architecture could unlock the full 1.58$\times$ information density advantage of ternary logic while leveraging the inherent speed, parallelism, and low-power characteristics of photonic systems. This work presents the theoretical foundation and architectural principles for wavelength-encoded ternary optical computing and identifies key challenges for experimental realization.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Ternary computing, optical computing, wavelength division, radix economy, photonic logic, multi-valued logic
+\end{IEEEkeywords}
+
+\section{Introduction}
+
+\subsection{The Ternary Computing Paradox}
+
+Ternary (base-3) computing systems have been recognized since the 1950s as mathematically superior to binary systems. The optimal radix for representing information with minimal hardware cost is Euler's number $e \approx 2.718$, and base-3 is the closest integer radix to this optimum \cite{knuth1981, hayes2001}. Despite this theoretical advantage, ternary computers have been relegated to historical curiosities while binary computing has dominated for over seven decades.
+
+The reason for this paradox is straightforward: with transistor-based digital electronics, implementing a stable three-state element (trit) requires approximately 40 transistors, compared to just 1 transistor for a binary bit \cite{hurst1984}. This 40$\times$ hardware overhead completely eliminates any theoretical advantage from ternary's superior information density. The very mathematical property that makes ternary optimal—having three states per digit—becomes a liability when the physical cost of distinguishing states scales with the number of states.
+
+\subsection{The Promise of Optical Computing}
+
+Photonic computing has emerged as a potential paradigm shift for information processing, offering advantages in speed (light propagates faster than electrons), parallelism (wavelength division multiplexing), and power efficiency (reduced heat dissipation) \cite{miller2010, caulfield2010}. While most optical computing research focuses on binary logic operations, photons possess natural properties that can encode multiple states without the hardware penalties of transistor-based systems:
+
+\begin{itemize}
+\item \textbf{Polarization}: Multiple orientations (linear, circular)
+\item \textbf{Wavelength}: Discrete frequency channels
+\item \textbf{Intensity}: Amplitude levels
+\item \textbf{Phase}: Wave timing offsets
+\end{itemize}
+
+Existing research in optical ternary computing has primarily exploited polarization states \cite{jin2003, jin2005} or intensity levels \cite{eichmann1986} to encode ternary values. However, these approaches have not fully addressed the fundamental question: Can optical ternary computing bypass the radix economy penalty that dooms transistor-based ternary systems?
+
+\subsection{Our Contribution}
+
+We propose a novel architecture for ternary optical computing based on \textbf{wavelength-selection encoding with external wavelength sources}. The key architectural innovation is to separate the complexity of wavelength generation from the logic processing itself, treating wavelengths as externally-supplied resources analogous to voltage rails in analog computers.
+
+Our specific contributions are:
+
+\begin{enumerate}
+\item \textbf{Novel encoding scheme}: Use wavelength selection (choosing ONE of N wavelengths) rather than wavelength-division multiplexing (using N wavelengths simultaneously) or polarization states
+\item \textbf{External source architecture}: Generate wavelengths outside the computing fabric, with internal components performing only wavelength-selective routing and switching
+\item \textbf{Theoretical analysis}: Show that wavelength-based differentiation has constant cost independent of radix, fundamentally bypassing the traditional radix economy penalty
+\item \textbf{Comparison framework}: Contrast with existing polarization-based and intensity-based optical ternary approaches
+\end{enumerate}
+
+We demonstrate that this architecture could, in principle, unlock the full 1.58$\times$ information density advantage of ternary logic while avoiding the hardware penalties that have historically prevented ternary computing from practical realization.
+
+\section{Background}
+
+\subsection{Radix Economy and the Optimality of Base-3}
+
+The concept of radix economy addresses the question: What number base minimizes the total hardware cost for representing numbers? This was formalized mathematically by considering two competing factors:
+
+\begin{enumerate}
+\item \textbf{Higher radix}: Fewer digits needed to represent a number (proportional to $\log_r(N)$)
+\item \textbf{Higher radix}: More complex hardware per digit (proportional to $r$)
+\end{enumerate}
+
+The total cost can be expressed as:
+\begin{equation}
+\text{Cost}(r) = r \times \log_r(N)
+\end{equation}
+
+Converting to natural logarithm:
+\begin{equation}
+\text{Cost}(r) = r \times \frac{\ln(N)}{\ln(r)}
+\end{equation}
+
+To minimize, we take the derivative with respect to $r$ and set to zero:
+\begin{equation}
+\frac{d}{dr}\left[\frac{r}{\ln(r)}\right] = \frac{\ln(r) - 1}{[\ln(r)]^2} = 0
+\end{equation}
+
+Solving: $\ln(r) = 1$, therefore $r = e \approx 2.718$.
+
+This proves mathematically that the optimal radix is Euler's number $e$ \cite{hayes2001}. Since we cannot build a base-2.718 computer, we evaluate integer radices:
+
+\begin{itemize}
+\item Base-2: Cost = 2.885
+\item \textbf{Base-3: Cost = 2.730} (closest to optimal!)
+\item Base-4: Cost = 4.000
+\item Base-5: Cost = 4.308
+\end{itemize}
+
+Base-3 provides approximately \textbf{5.4\% better hardware economy} than binary. Additionally, each ternary digit (trit) carries:
+\begin{equation}
+\text{Information per trit} = \log_2(3) \approx 1.585 \text{ bits}
+\end{equation}
+
+This represents a \textbf{58\% information density improvement} per digit compared to binary.
+
+\subsection{Why Ternary Failed with Transistors}
+
+The radix economy calculation assumes that the cost per digit scales linearly with the radix (i.e., a trit costs 3$\times$ what a bit costs). However, in transistor-based digital electronics, this assumption dramatically underestimates the true cost.
+
+Creating a stable three-state digital element requires:
+\begin{itemize}
+\item Voltage level discrimination circuits (distinguishing, e.g., 0V vs 2.5V vs 5V)
+\item Noise margin maintenance
+\item Signal regeneration (preventing degradation through cascaded gates)
+\item Level shifting and buffering
+\end{itemize}
+
+These requirements result in approximately \textbf{40 transistors per trit} compared to 1 transistor per bit \cite{hurst1984}. At this hardware ratio, the radix economy calculation becomes:
+
+\begin{equation}
+\text{Actual cost ratio} = \frac{40 \text{ transistors/trit}}{1 \text{ transistor/bit}} \div 1.585 \text{ bits/trit} \approx 25\times
+\end{equation}
+
+Far from being 5.4\% more efficient, transistor-based ternary is approximately \textbf{25$\times$ worse} than binary. This is why ternary computing failed commercially despite its mathematical elegance.
+
+\subsection{Existing Optical Ternary Computing Approaches}
+
+Previous research in optical ternary computing has explored several encoding schemes:
+
+\textbf{Polarization-based encoding} \cite{jin2003, jin2005, chattopadhyay2010}: Uses three polarization states. Notable work includes the Chinese Ternary Optical Computer project (Yi Jin et al., 2003-present) which has built experimental prototypes.
+
+\textbf{Intensity-based encoding} \cite{eichmann1986}: Uses three brightness levels but suffers from analog-like problems (noise, degradation, threshold sensitivity).
+
+\textbf{Multi-valued frequency encoding} \cite{garai2011}: Uses different wavelengths for multi-valued logic gates, focused on reversible computing rather than ternary state encoding.
+
+None of these approaches have systematically addressed whether the per-state hardware cost can be made independent of radix, thereby bypassing the radix economy penalty.
+
+\section{Proposed Architecture}
+
+\subsection{Core Concept}
+
+Our architecture is based on two key principles:
+
+\begin{enumerate}
+\item \textbf{Wavelength-selection encoding}: A ternary state is represented by which ONE wavelength is present in an optical channel (not combinations of wavelengths)
+\begin{itemize}
+\item State 0: $\lambda_1$ (e.g., red light, $\sim$650 nm)
+\item State 1: $\lambda_2$ (e.g., green light, $\sim$532 nm)
+\item State 2: $\lambda_3$ (e.g., blue light, $\sim$473 nm)
+\end{itemize}
+
+\item \textbf{External wavelength sources}: Wavelengths are generated externally and supplied to the computing fabric, analogous to voltage rails in analog computers
+\end{enumerate}
+
+\subsection{System Architecture}
+
+The complete system consists of three layers (see Fig. \ref{fig:architecture}):
+
+\textbf{Wavelength Source Layer (External):} Three (or more) continuous-wave laser sources at distinct wavelengths with wavelength stabilization and optical distribution network.
+
+\textbf{Logic Processing Layer (Internal):} Wavelength-selective switches choose which input wavelength to route to output using technologies like micro-ring resonators, Mach-Zehnder interferometers, or arrayed waveguide gratings.
+
+\textbf{Detection Layer (Outputs):} Wavelength demultiplexers separate wavelengths for individual photodetection.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\columnwidth]{Figure1_Architecture.png}
+\caption{System architecture for wavelength-encoded ternary optical computing. External laser sources provide three discrete wavelengths ($\lambda_1$, $\lambda_2$, $\lambda_3$) representing ternary states. Internal optical components perform wavelength-selective routing and logic operations.}
+\label{fig:architecture}
+\end{figure}
+
+\subsection{Ternary State Encoding}
+
+Figure \ref{fig:encoding} illustrates the wavelength-selection encoding scheme where each ternary state (0, 1, 2) is represented by a single discrete wavelength. Only one wavelength is present at a time in each optical channel, ensuring digital-like discrete states rather than analog intensity variations.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\columnwidth]{Figure2_StateEncoding.png}
+\caption{Ternary state encoding using wavelength selection. Each ternary state is represented by a single wavelength: red (650 nm), green (532 nm), or blue (473 nm).}
+\label{fig:encoding}
+\end{figure}
+
+\section{Theoretical Analysis}
+
+\subsection{Breaking the Radix Economy Penalty}
+
+The traditional radix economy formula assumes cost $\propto r$ (cost scales with number of states). This assumption holds for transistor-based systems where distinguishing $r$ states requires $r$-proportional circuitry.
+
+In wavelength-selection systems, a wavelength-selective switch (e.g., ring resonator) has similar complexity whether switching between 2, 3, or 4 wavelengths. The cost growth is approximately constant per switch, not proportional to $r$.
+
+Therefore, the effective cost model becomes:
+\begin{equation}
+\text{Cost}_{\text{wavelength}} \approx C_{\text{switch}} + C_{\text{demux}}/\text{fanout}
+\end{equation}
+
+where $C_{\text{switch}}$ is approximately \textbf{constant} regardless of radix. This allows us to achieve the information density benefit (1.58$\times$ for ternary) without paying the $r$-proportional hardware penalty.
+
+\subsection{Information Density Advantage}
+
+Each wavelength-encoded trit carries:
+\begin{equation}
+I_{\text{trit}} = \log_2(3) \approx 1.585 \text{ bits}
+\end{equation}
+
+For a system with $N$ optical paths (waveguides):
+\begin{itemize}
+\item Binary wavelength encoding: $N \times 1$ bit = $N$ bits
+\item Ternary wavelength encoding: $N \times 1.585$ bits = $1.585N$ bits
+\end{itemize}
+
+This represents \textbf{58\% more information} through the same number of physical channels.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\columnwidth]{Figure3_RadixEconomy.png}
+\caption{Radix economy analysis showing $r/\ln(r)$ as a function of radix. Base-3 (ternary) achieves the minimum at 2.730, closest to the theoretical optimum at $e \approx 2.718$.}
+\label{fig:radix}
+\end{figure}
+
+\subsection{Comparison to Polarization-Based Encoding}
+
+Figure \ref{fig:comparison} compares wavelength encoding with existing approaches. Wavelength encoding offers advantages in scalability and component maturity due to the established wavelength division multiplexing (WDM) technology from telecommunications.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\columnwidth]{Figure4_Comparison.png}
+\caption{Comparison of ternary computing implementations. Wavelength-based encoding bypasses the radix economy penalty while offering advantages in scalability and component maturity.}
+\label{fig:comparison}
+\end{figure}
+
+\section{Challenges and Future Directions}
+
+\subsection{Technical Challenges}
+
+\textbf{Optical loss and cascading}: Every switch/splitter introduces loss (typically 0.1-3 dB). After $N$ cascaded gates, signal may require amplification using optical amplifiers (SOA, EDFA).
+
+\textbf{Fanout}: Splitting optical signals for fanout reduces power per branch, requiring optical amplification or regeneration stages.
+
+\textbf{Wavelength crosstalk}: Imperfect filtering can allow multiple wavelengths to leak through, requiring high-extinction-ratio filters ($>$20 dB).
+
+\textbf{Integration density}: Photonic waveguides are currently $\sim$100$\times$ larger footprint than equivalent transistors, though improving.
+
+\subsection{Path to Experimental Validation}
+
+We propose a phased approach: (1) Single-gate demonstration, (2) Small-scale arithmetic units, (3) Integrated photonic chip implementation, and (4) Performance benchmarking against binary and polarization-based systems.
+
+\subsection{Future Research Directions}
+
+Higher radix systems (quaternary, quinary), hybrid wavelength-polarization encoding, reconfigurable ternary optical logic, and quantum aspects (single-photon qutrit encoding) represent promising extensions of this work.
+
+\section{Conclusion}
+
+We have presented a novel architecture for ternary optical computing based on wavelength-selection encoding with external wavelength sources. This approach draws architectural inspiration from analog computers (external voltage rails) while maintaining the discrete, digital nature of wavelength as a quantum property.
+
+\textbf{Key insights}:
+\begin{enumerate}
+\item Wavelength differentiation has constant cost independent of radix, fundamentally bypassing the radix economy penalty
+\item Separating wavelength generation from logic processing transforms wavelength encoding from a liability into an asset
+\item Base-3 remains mathematically optimal, and wavelength-encoded photonics may finally provide a physical substrate where this optimality can be realized
+\end{enumerate}
+
+If experimental validation confirms the theoretical advantages, wavelength-encoded ternary optical computing could provide 1.58$\times$ information density improvement over binary, reduced circuit depth for arithmetic operations, and native compatibility with WDM telecommunications infrastructure.
+
+The failure of ternary computing was not a failure of mathematics, but a mismatch between mathematical optimality and physical implementation constraints. By finding a physical encoding where the cost model aligns with the mathematical ideal, we may finally unlock the potential of base-3 computing that has been recognized for over 70 years but never achieved in practice.
+
+\section*{Acknowledgment}
+The author acknowledges the use of generative AI (Gemini) for assistance with LaTeX formatting, profile synchronization between ORCID and IEEE portals, and editorial refining of the manuscript's structural presentation. The author remains responsible for the original research content and technical conclusions presented herein.
+
+\begin{thebibliography}{10}
+
+\bibitem{knuth1981}
+D. E. Knuth, \emph{The Art of Computer Programming, Volume 2: Seminumerical Algorithms}, 2nd ed. Addison-Wesley, 1981.
+
+\bibitem{hayes2001}
+B. Hayes, ``Third base,'' \emph{American Scientist}, vol. 89, no. 6, pp. 490--494, 2001.
+
+\bibitem{hurst1984}
+S. L. Hurst, ``Multiple-valued logic—its status and its future,'' \emph{IEEE Trans. Computers}, vol. C-33, no. 12, pp. 1160--1179, 1984.
+
+\bibitem{miller2010}
+D. A. B. Miller, ``Are optical transistors the logical next step?'' \emph{Nature Photonics}, vol. 4, no. 1, pp. 3--5, 2010.
+
+\bibitem{caulfield2010}
+H. J. Caulfield and S. Dolev, ``Why future supercomputing requires optics,'' \emph{Nature Photonics}, vol. 4, no. 5, pp. 261--263, 2010.
+
+\bibitem{jin2003}
+Y. Jin, H. He, and Y. Lu, ``Ternary optical computer principle,'' \emph{Science in China Series F: Information Sciences}, vol. 46, no. 2, pp. 145--150, 2003.
+
+\bibitem{jin2005}
+Y. Jin, H. He, and Y. Lu, ``Ternary optical computer architecture,'' \emph{Physica Scripta}, vol. T118, pp. 98--101, 2005.
+
+\bibitem{eichmann1986}
+G. Eichmann, Y. Li, and R. R. Alfano, ``Optical binary coded ternary arithmetic and logic,'' \emph{Applied Optics}, vol. 25, no. 18, pp. 3113--3121, 1986.
+
+\bibitem{chattopadhyay2010}
+T. Chattopadhyay, ``All-optical symmetric ternary logic gate,'' \emph{Optics \& Laser Technology}, vol. 42, no. 5, pp. 839--842, 2010.
+
+\bibitem{garai2011}
+S. K. Garai, ``Novel method of designing all optical frequency-encoded Fredkin and Toffoli logic gates using semiconductor optical amplifiers,'' \emph{IET Optoelectronics}, vol. 5, no. 6, pp. 247--254, 2011.
+
+\end{thebibliography}
+
+\end{document}
