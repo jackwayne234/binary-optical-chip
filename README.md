@@ -119,6 +119,12 @@ We use a **hybrid approach**:
 
 See [`docs/README.md`](docs/README.md) for templates and guidelines.
 
+### Research Tools
+- **[Literature Search](tools/research_search/)** - Multi-database search tool (arXiv, IEEE, Zenodo)
+  - Live URL: https://research-search-tool.onrender.com
+  - Search all three major repositories from one interface
+  - Free hosting on Render.com (no more $25/month Replit cost!)
+
 ### Phase 2 Fiber Benchtop
 ```bash
 python3 Phase2_Fiber_Benchtop/firmware/sfp_tuner.py
