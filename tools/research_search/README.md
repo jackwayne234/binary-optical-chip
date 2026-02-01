@@ -8,8 +8,10 @@ A unified search interface for finding academic literature across multiple repos
 
 This web application provides a single search interface to query three major academic databases simultaneously:
 - **arXiv** - Open-access preprints (physics, CS, math)
-- **IEEE Xplore** - Engineering and technology papers
+- **Semantic Scholar** - AI-powered academic search engine with 200M+ papers (free, open access)
 - **Zenodo** - Open research data and publications (CERN repository)
+
+**All three sources are FREE and OPEN ACCESS - no paywalls, no API keys required!**
 
 ## Features
 
@@ -70,14 +72,16 @@ Try these searches:
 | Source | Coverage | Access | API |
 |--------|----------|--------|-----|
 | **arXiv** | Physics, CS, math, engineering | Free, open | Public |
-| **IEEE Xplore** | Engineering, electronics | Mixed (some free) | Requires key |
+| **Semantic Scholar** | 200M+ papers across all fields | Free, open, AI-powered | Public (no key needed) |
 | **Zenodo** | All research fields | Free, open (CERN) | REST API |
+
+**All three data sources are completely FREE and OPEN ACCESS - no institutional access required!**
 
 ## Technical Stack
 
 - **Backend:** Python/Flask
 - **Frontend:** HTML/CSS/JavaScript
-- **APIs:** arXiv API, IEEE Xplore API, Zenodo API
+- **APIs:** arXiv API, Semantic Scholar API (free, no key), Zenodo API
 - **Hosting:** Render.com (free tier)
 
 ## Architecture
@@ -85,7 +89,7 @@ Try these searches:
 ```
 User Query → Flask App → Parallel API Calls → Aggregated Results → HTML Display
                 ↓              ↓                    ↓
-            arXiv API    IEEE Xplore API      Zenodo API
+            arXiv API    Semantic Scholar API      Zenodo API
 ```
 
 ## Files
@@ -116,7 +120,7 @@ See [DEPLOY.md](DEPLOY.md) for detailed instructions.
 ## Limitations
 
 - Subject to each repository's API rate limits
-- Some IEEE papers require institutional access
+- All papers are freely accessible - no institutional access required
 - Free tier sleeps after inactivity (30-sec wake delay)
 - Search syntax varies between sources
 
@@ -147,7 +151,7 @@ Contact: chrisriner45@gmail.com
 - **Main Project:** https://github.com/jackwayne234/-wavelength-ternary-optical-computer
 - **Paper (Zenodo):** https://doi.org/10.5281/zenodo.18437600
 - **arXiv:** https://arxiv.org/
-- **IEEE Xplore:** https://ieeexplore.ieee.org/
+- **Semantic Scholar:** https://www.semanticscholar.org/ (free, AI-powered)
 - **Zenodo:** https://zenodo.org/
 
 ## License
@@ -156,7 +160,7 @@ MIT License - See [LICENSE](../../LICENSE)
 
 Data sources retain their respective terms:
 - arXiv: Open access
-- IEEE: Mixed access
+- Semantic Scholar: Open access (AI2 non-commercial)
 - Zenodo: Open access (Creative Commons)
 
 ---

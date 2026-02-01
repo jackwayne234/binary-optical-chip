@@ -74,7 +74,7 @@ Render will:
 
 1. Open the URL Render provides
 2. Try a search: `"optical computing"`
-3. Verify results appear from arXiv, IEEE, and Zenodo
+3. Verify results appear from arXiv, Semantic Scholar, and Zenodo
 
 ### Step 6: Update Documentation
 
@@ -118,8 +118,8 @@ If you need API keys or other secrets:
 1. In Render dashboard, go to your service
 2. Click **"Environment"** tab
 3. Add environment variables:
-   - `IEEE_API_KEY` (if you have one)
-   - Any other API keys
+   - No API keys needed for arXiv, Semantic Scholar, or Zenodo - all are free and open access!
+   - Add any custom API keys if you extend the tool
 
 ## Troubleshooting
 
@@ -150,7 +150,7 @@ If you need API keys or other secrets:
 
 If searches stop working:
 - arXiv: 1 request/3 seconds (built-in delay helps)
-- IEEE: May require API key for heavy use
+- Semantic Scholar: Generous rate limits, no API key required
 - Zenodo: Rate limited but generous
 
 **Solution:** Add caching or reduce query frequency

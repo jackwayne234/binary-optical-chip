@@ -1,12 +1,14 @@
 """
 Research Literature Search Tool
-A Flask application to search arXiv, IEEE, and Zenodo simultaneously.
+A Flask application to search arXiv, Semantic Scholar, and Zenodo simultaneously.
 
 Copyright (c) 2026 Christopher Riner
 Licensed under the MIT License. See LICENSE file for details.
 
 Wavelength-Division Ternary Optical Computer
 https://github.com/jackwayne234/-wavelength-ternary-optical-computer
+
+All three sources are FREE and OPEN ACCESS - no paywalls, no API keys required!
 """
 
 from flask import Flask, render_template, request, jsonify
@@ -55,24 +57,26 @@ def search_arxiv(query, max_results=10):
         return [{'error': f'arXiv search failed: {str(e)}'}]
 
 
-def search_ieee(query, max_results=10):
-    """Search IEEE Xplore for papers matching the query."""
+def search_semantic_scholar(query, max_results=10):
+    """Search Semantic Scholar for papers matching the query.
+    
+    Semantic Scholar is a free, AI-powered academic search engine that indexes
+    over 200 million papers. No API key required for basic search!
+    
+    Why Semantic Scholar instead of IEEE?
+    - ✅ FREE - No paywalls, no API keys needed
+    - ✅ Open Access - Focuses on freely available papers
+    - ✅ AI-Powered - Better relevance and recommendations
+    - ✅ No Registration - Just search and go
+    """
     try:
-        # Note: IEEE Xplore requires an API key for full access
-        # This is a basic implementation that may have limited results without a key
-        # For production use, sign up for a free API key at: https://developer.ieee.org/
-        
-        api_key = None  # Add your API key here if you have one
-        
-        url = "https://ieeexploreapi.ieee.org/api/v1/search/articles"
+        # Semantic Scholar API endpoint (FREE - no API key required!)
+        url = "https://api.semanticscholar.org/graph/v1/paper/search"
         params = {
-            'querytext': query,
-            'max_results': max_results,
-            'format': 'json'
+            'query': query,
+            'limit': max_results,
+            'fields': 'title,authors,year,abstract,url,openAccessPdf'
         }
-        
-        if api_key:
-            params['apikey'] = api_key
         
         response = requests.get(url, params=params, timeout=10)
         
@@ -80,30 +84,37 @@ def search_ieee(query, max_results=10):
             data = response.json()
             results = []
             
-            for article in data.get('articles', []):
+            for paper in data.get('data', []):
+                # Extract authors
+                authors_list = []
+                for author in paper.get('authors', []):
+                    name = author.get('name', 'Unknown')
+                    if name:
+                        authors_list.append(name)
+                
+                # Get the best URL (open access PDF if available, otherwise regular URL)
+                open_access = paper.get('openAccessPdf')
+                paper_url = open_access.get('url') if open_access else paper.get('url', '#')
+                
                 results.append({
-                    'title': article.get('title', 'No title'),
-                    'authors': article.get('authors', []),
-                    'summary': article.get('abstract', 'No abstract')[:300] + '...',
-                    'url': article.get('html_url', article.get('pdf_url', '#')),
-                    'published': article.get('publication_year', 'Unknown'),
-                    'source': 'IEEE',
-                    'id': article.get('article_number', 'unknown')
+                    'title': paper.get('title', 'No title'),
+                    'authors': authors_list,
+                    'summary': paper.get('abstract', 'No abstract')[:300] + '...' if paper.get('abstract') else 'No abstract available',
+                    'url': paper_url,
+                    'published': str(paper.get('year', 'Unknown')),
+                    'source': 'Semantic Scholar',
+                    'id': paper.get('paperId', 'unknown'),
+                    'open_access': bool(open_access)
                 })
             
             return results
+        elif response.status_code == 429:
+            # Rate limited
+            return [{'error': 'Semantic Scholar rate limit reached. Please wait a moment and try again.'}]
         else:
-            # If no API key or error, return informative message
-            return [{
-                'title': 'IEEE Xplore Search',
-                'summary': 'IEEE Xplore requires an API key for full search functionality. Some results may be limited. Visit https://developer.ieee.org/ to get a free API key.',
-                'url': f'https://ieeexplore.ieee.org/search/searchresult.jsp?queryText={query}',
-                'source': 'IEEE',
-                'authors': [],
-                'published': 'N/A'
-            }]
+            return [{'error': f'Semantic Scholar API error: {response.status_code}'}]
     except Exception as e:
-        return [{'error': f'IEEE search failed: {str(e)}'}]
+        return [{'error': f'Semantic Scholar search failed: {str(e)}'}]
 
 
 def search_zenodo(query, max_results=10):
@@ -160,22 +171,22 @@ def search():
     # Search all three sources in parallel
     with ThreadPoolExecutor(max_workers=3) as executor:
         arxiv_future = executor.submit(search_arxiv, query)
-        ieee_future = executor.submit(search_ieee, query)
+        semantic_future = executor.submit(search_semantic_scholar, query)
         zenodo_future = executor.submit(search_zenodo, query)
         
         # Add small delay to be nice to APIs
         time.sleep(0.5)
         
         arxiv_results = arxiv_future.result()
-        ieee_results = ieee_future.result()
+        semantic_results = semantic_future.result()
         zenodo_results = zenodo_future.result()
     
     return jsonify({
         'query': query,
         'arxiv': arxiv_results,
-        'ieee': ieee_results,
+        'semantic_scholar': semantic_results,
         'zenodo': zenodo_results,
-        'total': len(arxiv_results) + len(ieee_results) + len(zenodo_results)
+        'total': len(arxiv_results) + len(semantic_results) + len(zenodo_results)
     })
 
 

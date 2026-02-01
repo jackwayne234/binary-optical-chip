@@ -287,7 +287,7 @@
     <div class="container">
         <header>
             <h1>🔬 Research Literature Search</h1>
-            <p>Search arXiv, IEEE Xplore, and Zenodo simultaneously</p>
+            <p>Search arXiv, Semantic Scholar, and Zenodo simultaneously</p>
         </header>
 
         <div class="search-container">
@@ -302,8 +302,8 @@
                     <span>arXiv</span>
                 </label>
                 <label class="source-badge">
-                    <input type="checkbox" id="ieeeCheck" checked>
-                    <span>IEEE Xplore</span>
+                    <input type="checkbox" id="semanticCheck" checked>
+                    <span>Semantic Scholar</span>
                 </label>
                 <label class="source-badge">
                     <input type="checkbox" id="zenodoCheck" checked>
@@ -387,7 +387,7 @@
                     <div class="stats">
                         <span>📄 ${data.total} total results</span>
                         <span>🔬 arXiv: ${data.arxiv.length}</span>
-                        <span>⚡ IEEE: ${data.ieee.length}</span>
+                        <span>🎓 Semantic Scholar: ${data.semantic_scholar.length}</span>
                         <span>📦 Zenodo: ${data.zenodo.length}</span>
                     </div>
                 </div>
@@ -407,15 +407,15 @@
                 html += '</div>';
             }
 
-            // IEEE Results
-            if (document.getElementById('ieeeCheck').checked) {
+            // Semantic Scholar Results
+            if (document.getElementById('semanticCheck').checked) {
                 html += '<div class="source-section">';
-                html += '<div class="source-title">⚡ IEEE Xplore</div>';
-                if (data.ieee.length === 0 || data.ieee[0].error) {
-                    html += `<div class="no-results">${data.ieee[0]?.error || 'No results found'}</div>`;
+                html += '<div class="source-title">🎓 Semantic Scholar</div>';
+                if (data.semantic_scholar.length === 0 || data.semantic_scholar[0].error) {
+                    html += `<div class="no-results">${data.semantic_scholar[0]?.error || 'No results found'}</div>`;
                 } else {
-                    data.ieee.forEach(paper => {
-                        html += renderPaper(paper, 'IEEE');
+                    data.semantic_scholar.forEach(paper => {
+                        html += renderPaper(paper, 'Semantic Scholar');
                     });
                 }
                 html += '</div>';
