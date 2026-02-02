@@ -460,6 +460,334 @@ def mul_mixer(
     return c
 
 
+# =============================================================================
+# OPTICAL CARRY CHAIN COMPONENTS
+# =============================================================================
+# These components enable fully optical carry propagation between trits,
+# eliminating the need for electronic carry logic.
+
+# GDS layer for optical carry components
+CARRY_LAYER = (11, 0)
+
+def optical_delay_line(
+    delay_ps: float = 10.0,
+    name: str = "delay_line"
+) -> gf.Component:
+    """
+    Creates an optical delay line for carry timing synchronization.
+
+    The delay allows the current trit's computation to complete before
+    the carry from the previous trit arrives.
+
+    Args:
+        delay_ps: Desired delay in picoseconds
+        name: Component name
+
+    Delay calculation:
+        Length = delay_ps × c / n_eff
+        For LiNbO3 (n_eff ≈ 2.2): 10 ps ≈ 1.36 mm
+    """
+    c = gf.Component(name)
+
+    # Calculate length: L = t × c / n
+    # c = 3e8 m/s = 3e5 μm/ps, n_eff ≈ 2.2
+    n_eff = 2.2
+    length_um = delay_ps * 300 / n_eff  # μm
+
+    # Use spiral or serpentine to fit long delay in compact area
+    # For simplicity, use a serpentine with multiple bends
+    n_segments = max(1, int(length_um / 200))  # 200 μm per segment
+    segment_length = length_um / n_segments
+    spacing = 15  # μm between segments
+
+    if n_segments == 1:
+        wg = c << gf.components.straight(length=segment_length)
+        c.add_port(name="input", port=wg.ports["o1"])
+        c.add_port(name="output", port=wg.ports["o2"])
+    else:
+        # Create serpentine path
+        current_y = 0
+        prev_port = None
+
+        for i in range(n_segments):
+            seg = c << gf.components.straight(length=segment_length)
+            if i % 2 == 0:
+                seg.dmove((0, current_y))
+            else:
+                seg.dmove((0, current_y))
+                seg.dmirror()
+
+            if prev_port is not None:
+                # Add bend to connect segments
+                bend = c << gf.components.bend_euler(radius=5, angle=180)
+                bend.dmove((segment_length if i % 2 == 1 else 0, current_y - spacing/2))
+                route_single(c, cross_section=XS, port1=prev_port, port2=bend.ports["o1"])
+                route_single(c, cross_section=XS, port1=bend.ports["o2"], port2=seg.ports["o1"])
+
+            if i == 0:
+                c.add_port(name="input", port=seg.ports["o1"])
+            if i == n_segments - 1:
+                c.add_port(name="output", port=seg.ports["o2"])
+
+            prev_port = seg.ports["o2"]
+            current_y -= spacing
+
+    # Visual marker
+    c.add_polygon(
+        [(-5, 5), (segment_length + 5, 5), (segment_length + 5, current_y - 5), (-5, current_y - 5)],
+        layer=CARRY_LAYER
+    )
+    c.add_label(f"DLY_{delay_ps:.0f}ps", position=(segment_length/2, 10), layer=LABEL_LAYER)
+
+    return c
+
+
+def carry_tap(
+    name: str = "carry_tap"
+) -> gf.Component:
+    """
+    Extracts carry wavelengths from mixer output.
+
+    Uses add-drop ring resonators to tap:
+      - 0.500 μm (carry +1, from B+B = +2)
+      - 0.775 μm (borrow -1, from R+R = -2)
+
+    Main signal continues to output stage for detection.
+    Carry signals route to wavelength converter.
+
+    Structure:
+        Input ──→ Ring_pos (0.500 μm) ──→ Ring_neg (0.775 μm) ──→ thru
+                      │ drop                  │ drop
+                      ↓                       ↓
+                  carry_pos               carry_neg
+    """
+    c = gf.Component(name)
+
+    # Add-drop ring for carry +1 (0.500 μm)
+    # Using ring_double which has add-drop configuration
+    ring_pos = c << gf.components.ring_double(radius=5.0, gap=0.15)
+    ring_pos.dmove((0, 0))
+
+    # Add-drop ring for borrow -1 (0.775 μm) - cascaded after first ring
+    ring_neg = c << gf.components.ring_double(radius=5.0, gap=0.15)
+    ring_neg.dmove((40, 0))
+
+    # Route thru port of first ring to input of second
+    route_single(c, cross_section=XS, port1=ring_pos.ports["o2"], port2=ring_neg.ports["o1"])
+
+    # Labels
+    c.add_label("TAP_500nm", position=(0, 15), layer=LABEL_LAYER)
+    c.add_label("TAP_775nm", position=(40, 15), layer=LABEL_LAYER)
+
+    # Ports
+    c.add_port(name="input", port=ring_pos.ports["o1"])      # Main input
+    c.add_port(name="thru", port=ring_neg.ports["o2"])       # Main signal continues
+    c.add_port(name="carry_pos", port=ring_pos.ports["o4"])  # +1 carry (drop port)
+    c.add_port(name="carry_neg", port=ring_neg.ports["o4"])  # -1 borrow (drop port)
+
+    c.add_label("CARRY_TAP", position=(20, 25), layer=LABEL_LAYER)
+
+    return c
+
+
+def wavelength_converter_opa(
+    input_wavelength_um: float = 0.500,
+    output_wavelength_um: float = 1.000,
+    length: float = 30.0,
+    name: str = "opa_converter"
+) -> gf.Component:
+    """
+    Converts carry wavelength to input wavelength using Optical Parametric Amplification.
+
+    OPA uses a pump laser to convert signal wavelength:
+        ω_signal + ω_pump → ω_idler (conservation of energy)
+
+    For carry conversion:
+        0.500 μm (carry +1) + pump → 1.000 μm (Blue = +1)
+        0.775 μm (borrow -1) + pump → 1.550 μm (Red = -1)
+
+    The pump wavelength is calculated from:
+        1/λ_pump = 1/λ_signal - 1/λ_output
+
+    Args:
+        input_wavelength_um: Carry signal wavelength
+        output_wavelength_um: Desired output wavelength (input encoding)
+        length: Interaction length
+        name: Component name
+    """
+    c = gf.Component(name)
+
+    # Calculate pump wavelength
+    pump_wavelength = 1 / (1/input_wavelength_um - 1/output_wavelength_um)
+
+    # OPA crystal/waveguide
+    wg = c << gf.components.straight(length=length, width=0.8)
+
+    # Pump input coupler (from side)
+    pump_coupler = c << gf.components.mmi1x2()
+    pump_coupler.dmove((length/2, -15))
+    pump_coupler.drotate(90)
+
+    # Visual marker for OPA region
+    c.add_polygon(
+        [(0, -2), (length, -2), (length, 2), (0, 2)],
+        layer=CARRY_LAYER
+    )
+    c.add_label(f"OPA", position=(length/2, 5), layer=LABEL_LAYER)
+    c.add_label(f"{input_wavelength_um:.3f}→{output_wavelength_um:.3f}",
+                position=(length/2, -5), layer=LABEL_LAYER)
+
+    c.add_port(name="input", port=wg.ports["o1"])
+    c.add_port(name="output", port=wg.ports["o2"])
+    c.add_port(name="pump", port=pump_coupler.ports["o1"])
+
+    return c
+
+
+def carry_injector(
+    name: str = "carry_injector"
+) -> gf.Component:
+    """
+    Injects optical carry signal into next trit's computation.
+
+    Structure:
+        carry_in ──→ Combiner ──→ output (to next trit's mixer input)
+        signal_in ─┘
+
+    The carry signal (now at input wavelength after OPA conversion)
+    is combined with the next trit's A+B signal before the mixer.
+    """
+    c = gf.Component(name)
+
+    # 2x1 combiner (carry + signal)
+    combiner = c << gf.components.mmi2x2()
+
+    c.add_port(name="signal_in", port=combiner.ports["o1"])
+    c.add_port(name="carry_in", port=combiner.ports["o2"])
+    c.add_port(name="output", port=combiner.ports["o3"])
+
+    c.add_label("CARRY_INJ", position=(10, 10), layer=LABEL_LAYER)
+
+    return c
+
+
+def optical_carry_unit(
+    name: str = "carry_unit",
+    uid: str = ""
+) -> gf.Component:
+    """
+    Complete optical carry unit for one trit.
+
+    Handles both carry-out (to next trit) and carry-in (from previous trit).
+
+    Structure:
+        carry_in_pos ──→ OPA ──→ ┐
+        carry_in_neg ──→ OPA ──→ ├→ Injector ──→ to_mixer
+                    signal_in ──→ ┘
+
+        from_mixer ──→ Carry Tap ──→ thru (to detectors)
+                              ├──→ carry_out_pos (0.500 μm)
+                              └──→ carry_out_neg (0.775 μm)
+
+        carry_out_pos ──→ OPA ──→ Delay ──→ to_next_trit_pos
+        carry_out_neg ──→ OPA ──→ Delay ──→ to_next_trit_neg
+    """
+    import uuid
+    if not uid:
+        uid = str(uuid.uuid4())[:8]
+
+    c = gf.Component(name)
+
+    # === CARRY INPUT (from previous trit) ===
+
+    # OPA converters for incoming carry
+    opa_in_pos = c << wavelength_converter_opa(
+        input_wavelength_um=0.500,
+        output_wavelength_um=1.000,  # Blue = +1
+        name=f"opa_in_pos_{uid}"
+    )
+    opa_in_pos.dmove((0, 30))
+
+    opa_in_neg = c << wavelength_converter_opa(
+        input_wavelength_um=0.775,
+        output_wavelength_um=1.550,  # Red = -1
+        name=f"opa_in_neg_{uid}"
+    )
+    opa_in_neg.dmove((0, -30))
+
+    # Carry injector
+    injector = c << carry_injector(name=f"injector_{uid}")
+    injector.dmove((50, 0))
+
+    # Combiner for pos and neg carry signals
+    carry_combine = c << gf.components.mmi2x2()
+    carry_combine.dmove((35, 0))
+
+    route_single(c, cross_section=XS, port1=opa_in_pos.ports["output"], port2=carry_combine.ports["o1"])
+    route_single(c, cross_section=XS, port1=opa_in_neg.ports["output"], port2=carry_combine.ports["o2"])
+    route_single(c, cross_section=XS, port1=carry_combine.ports["o3"], port2=injector.ports["carry_in"])
+
+    # === CARRY OUTPUT (to next trit) ===
+
+    # Carry tap extracts carry wavelengths from mixer output
+    tap = c << carry_tap(name=f"tap_{uid}")
+    tap.dmove((150, 0))
+
+    # OPA converters for outgoing carry
+    opa_out_pos = c << wavelength_converter_opa(
+        input_wavelength_um=0.500,
+        output_wavelength_um=1.000,
+        name=f"opa_out_pos_{uid}"
+    )
+    opa_out_pos.dmove((200, 30))
+
+    opa_out_neg = c << wavelength_converter_opa(
+        input_wavelength_um=0.775,
+        output_wavelength_um=1.550,
+        name=f"opa_out_neg_{uid}"
+    )
+    opa_out_neg.dmove((200, -30))
+
+    # Delay lines for timing
+    delay_pos = c << optical_delay_line(delay_ps=5.0, name=f"delay_pos_{uid}")
+    delay_pos.dmove((250, 30))
+
+    delay_neg = c << optical_delay_line(delay_ps=5.0, name=f"delay_neg_{uid}")
+    delay_neg.dmove((250, -30))
+
+    # Route carry tap outputs through OPA and delay
+    route_single(c, cross_section=XS, port1=tap.ports["carry_pos"], port2=opa_out_pos.ports["input"])
+    route_single(c, cross_section=XS, port1=tap.ports["carry_neg"], port2=opa_out_neg.ports["input"])
+    route_single(c, cross_section=XS, port1=opa_out_pos.ports["output"], port2=delay_pos.ports["input"])
+    route_single(c, cross_section=XS, port1=opa_out_neg.ports["output"], port2=delay_neg.ports["input"])
+
+    # === PORTS ===
+
+    # Carry inputs (from previous trit)
+    c.add_port(name="carry_in_pos", port=opa_in_pos.ports["input"])
+    c.add_port(name="carry_in_neg", port=opa_in_neg.ports["input"])
+
+    # Signal path
+    c.add_port(name="signal_in", port=injector.ports["signal_in"])
+    c.add_port(name="to_mixer", port=injector.ports["output"])
+    c.add_port(name="from_mixer", port=tap.ports["input"])
+    c.add_port(name="to_detectors", port=tap.ports["thru"])
+
+    # Carry outputs (to next trit)
+    c.add_port(name="carry_out_pos", port=delay_pos.ports["output"])
+    c.add_port(name="carry_out_neg", port=delay_neg.ports["output"])
+
+    # Pump inputs for OPA
+    c.add_port(name="pump_in_pos", port=opa_in_pos.ports["pump"])
+    c.add_port(name="pump_in_neg", port=opa_in_neg.ports["pump"])
+    c.add_port(name="pump_out_pos", port=opa_out_pos.ports["pump"])
+    c.add_port(name="pump_out_neg", port=opa_out_neg.ports["pump"])
+
+    c.add_label("OPTICAL_CARRY", position=(150, 50), layer=LABEL_LAYER)
+
+    return c
+
+
 def wavelength_combiner(
     n_inputs: int = 3,
     name: str = "combiner"
@@ -1425,6 +1753,177 @@ def generate_complete_alu(
 
     # Add port for laser input
     c.add_port(name="laser_in", port=frontend.ports["laser_in"])
+
+    return c
+
+
+def generate_optical_carry_alu(
+    name: str = "TernaryOpticalCarry",
+    operation: Literal['add', 'sub', 'mul'] = 'add',
+    selector_type: Literal['ring', 'mzi'] = 'ring'
+) -> gf.Component:
+    """
+    Generates a single-trit ALU with FULLY OPTICAL carry propagation.
+
+    This ALU includes the optical carry chain components:
+      - Carry input (from previous trit) via OPA wavelength conversion
+      - Carry output (to next trit) via carry tap + OPA + delay line
+
+    The carry signals are wavelength-converted and time-delayed so that
+    multi-trit arithmetic happens entirely in the optical domain.
+    The controlling computer just loads operands and reads results.
+
+    Signal flow:
+      carry_in_pos ──→ OPA ──┐
+      carry_in_neg ──→ OPA ──┼→ Injector ──┐
+                             │             │
+      CW Laser → Frontend → AWG → Selectors → Combiner ──→ Injector → Mixer
+                                                                        ↓
+      carry_out_pos ←── OPA ←── Delay ←── Carry Tap ←── Mixer Output
+      carry_out_neg ←── OPA ←── Delay ←──────┘              ↓
+                                                      Output Stage
+                                                           ↓
+                                                    DET_-2 to DET_+2
+
+    Args:
+        name: Component name
+        operation: 'add', 'sub', or 'mul'
+        selector_type: 'ring' or 'mzi'
+    """
+    import uuid
+    uid = str(uuid.uuid4())[:8]
+
+    c = gf.Component(name)
+
+    # =========================
+    # 1. OPTICAL FRONTEND
+    # =========================
+    frontend = c << optical_frontend(name=f"frontend_{uid}", uid=uid)
+    frontend.dmove((0, 0))
+
+    # =========================
+    # 2. WAVELENGTH SELECTORS FOR OPERAND A
+    # =========================
+    if selector_type == 'ring':
+        sel_a_r = c << wavelength_selector(wavelength_um=1.550, name=f"sel_a_r_{uid}")
+        sel_a_g = c << wavelength_selector(wavelength_um=1.216, name=f"sel_a_g_{uid}")
+        sel_a_b = c << wavelength_selector(wavelength_um=1.000, name=f"sel_a_b_{uid}")
+    else:  # mzi
+        sel_a_r = c << wavelength_selector_mzi(wavelength_um=1.550, name=f"sel_a_r_{uid}")
+        sel_a_g = c << wavelength_selector_mzi(wavelength_um=1.216, name=f"sel_a_g_{uid}")
+        sel_a_b = c << wavelength_selector_mzi(wavelength_um=1.000, name=f"sel_a_b_{uid}")
+
+    sel_a_r.dmove((180, 50))
+    sel_a_g.dmove((180, 25))
+    sel_a_b.dmove((180, 0))
+
+    route_single(c, cross_section=XS, port1=frontend.ports["a_red"], port2=sel_a_r.ports["input"])
+    route_single(c, cross_section=XS, port1=frontend.ports["a_green"], port2=sel_a_g.ports["input"])
+    route_single(c, cross_section=XS, port1=frontend.ports["a_blue"], port2=sel_a_b.ports["input"])
+
+    # Combiner for A
+    comb_a = c << wavelength_combiner(n_inputs=3, name=f"comb_a_{uid}")
+    comb_a.dmove((280, 25))
+
+    route_single(c, cross_section=XS, port1=sel_a_r.ports["output"], port2=comb_a.ports["in1"])
+    route_single(c, cross_section=XS, port1=sel_a_g.ports["output"], port2=comb_a.ports["in2"])
+    route_single(c, cross_section=XS, port1=sel_a_b.ports["output"], port2=comb_a.ports["in3"])
+
+    # =========================
+    # 3. WAVELENGTH SELECTORS FOR OPERAND B
+    # =========================
+    if selector_type == 'ring':
+        sel_b_r = c << wavelength_selector(wavelength_um=1.550, name=f"sel_b_r_{uid}")
+        sel_b_g = c << wavelength_selector(wavelength_um=1.216, name=f"sel_b_g_{uid}")
+        sel_b_b = c << wavelength_selector(wavelength_um=1.000, name=f"sel_b_b_{uid}")
+    else:  # mzi
+        sel_b_r = c << wavelength_selector_mzi(wavelength_um=1.550, name=f"sel_b_r_{uid}")
+        sel_b_g = c << wavelength_selector_mzi(wavelength_um=1.216, name=f"sel_b_g_{uid}")
+        sel_b_b = c << wavelength_selector_mzi(wavelength_um=1.000, name=f"sel_b_b_{uid}")
+
+    sel_b_r.dmove((180, -25))
+    sel_b_g.dmove((180, -50))
+    sel_b_b.dmove((180, -75))
+
+    route_single(c, cross_section=XS, port1=frontend.ports["b_red"], port2=sel_b_r.ports["input"])
+    route_single(c, cross_section=XS, port1=frontend.ports["b_green"], port2=sel_b_g.ports["input"])
+    route_single(c, cross_section=XS, port1=frontend.ports["b_blue"], port2=sel_b_b.ports["input"])
+
+    # Combiner for B
+    comb_b = c << wavelength_combiner(n_inputs=3, name=f"comb_b_{uid}")
+    comb_b.dmove((280, -50))
+
+    route_single(c, cross_section=XS, port1=sel_b_r.ports["output"], port2=comb_b.ports["in1"])
+    route_single(c, cross_section=XS, port1=sel_b_g.ports["output"], port2=comb_b.ports["in2"])
+    route_single(c, cross_section=XS, port1=sel_b_b.ports["output"], port2=comb_b.ports["in3"])
+
+    # =========================
+    # 4. OPERATION COMBINER (A + B)
+    # =========================
+    op_combiner = c << gf.components.mmi2x2()
+    op_combiner.dmove((380, -10))
+
+    route_single(c, cross_section=XS, port1=comb_a.ports["output"], port2=op_combiner.ports["o1"])
+    route_single(c, cross_section=XS, port1=comb_b.ports["output"], port2=op_combiner.ports["o2"])
+
+    # =========================
+    # 5. OPTICAL CARRY CHAIN
+    # =========================
+    carry_unit = c << optical_carry_unit(name=f"carry_{uid}", uid=uid)
+    carry_unit.dmove((420, -10))
+
+    # Route operation combiner output to carry unit signal input
+    route_single(c, cross_section=XS, port1=op_combiner.ports["o3"], port2=carry_unit.ports["signal_in"])
+
+    # =========================
+    # 6. MIXER (operation-dependent)
+    # =========================
+    if operation == 'add':
+        mixer = c << sfg_mixer(length=20, name=f"sfg_mixer_{uid}")
+        op_label = "ADD_SFG"
+    elif operation == 'sub':
+        mixer = c << dfg_mixer(length=25, name=f"dfg_mixer_{uid}")
+        op_label = "SUB_DFG"
+    elif operation == 'mul':
+        mixer = c << mul_mixer(length=30, name=f"mul_mixer_{uid}")
+        op_label = "MUL_KERR"
+    else:
+        raise ValueError(f"Unknown operation '{operation}'")
+
+    mixer.dmove((520, -10))
+
+    # Route carry unit to mixer and back
+    route_single(c, cross_section=XS, port1=carry_unit.ports["to_mixer"], port2=mixer.ports["input"])
+    route_single(c, cross_section=XS, port1=mixer.ports["output"], port2=carry_unit.ports["from_mixer"])
+
+    # =========================
+    # 7. OUTPUT STAGE (5 detectors)
+    # =========================
+    output = c << ternary_output_stage_simple(name=f"output_{uid}", uid=uid)
+    output.dmove((700, -10))
+
+    route_single(c, cross_section=XS, port1=carry_unit.ports["to_detectors"], port2=output.ports["input"])
+
+    # =========================
+    # 8. LABELS AND PORTS
+    # =========================
+    c.add_label(f"ALU_OPTICAL_CARRY_{op_label}", position=(400, 100), layer=LABEL_LAYER)
+    c.add_label("LASER_IN", position=(-20, 0), layer=LABEL_LAYER)
+
+    # External ports
+    c.add_port(name="laser_in", port=frontend.ports["laser_in"])
+
+    # Carry chain ports (connect to adjacent trits)
+    c.add_port(name="carry_in_pos", port=carry_unit.ports["carry_in_pos"])
+    c.add_port(name="carry_in_neg", port=carry_unit.ports["carry_in_neg"])
+    c.add_port(name="carry_out_pos", port=carry_unit.ports["carry_out_pos"])
+    c.add_port(name="carry_out_neg", port=carry_unit.ports["carry_out_neg"])
+
+    # Pump laser ports for OPA (external pump sources needed)
+    c.add_port(name="pump_in_pos", port=carry_unit.ports["pump_in_pos"])
+    c.add_port(name="pump_in_neg", port=carry_unit.ports["pump_in_neg"])
+    c.add_port(name="pump_out_pos", port=carry_unit.ports["pump_out_pos"])
+    c.add_port(name="pump_out_neg", port=carry_unit.ports["pump_out_neg"])
 
     return c
 
