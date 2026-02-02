@@ -10,6 +10,32 @@
 
 > **Bypassing the Radix Economy Penalty in Optical Computing**
 
+## Table of Contents
+
+- [Recent Activity](#recent-activity)
+- [The Big Idea](#-the-big-idea)
+- [Repository Structure](#-repository-structure)
+- [Quick Start](#-quick-start)
+- [Documentation](#-documentation)
+- [Project Status](#-project-status)
+- [Contributing](#-contributing)
+- [Citation](#-citation)
+- [Licensing](#-open-source-licensing)
+
+## Recent Activity
+
+| Date | Update |
+|------|--------|
+| Feb 2026 | Added 81-trit ternary architecture GDS layout for chip fabrication |
+| Feb 2026 | Added ternary chip generator tool and architecture documentation |
+| Feb 2026 | Phase 4 polymer material simulation results complete |
+| Feb 2026 | Academic profile setup and BibTeX citations added |
+| Jan 2026 | Software DOI badge and dual-citation system |
+| Jan 2026 | Zenodo-GitHub integration for automatic releases |
+| Jan 2026 | Research Literature Search Tool deployed (free on Render.com) |
+| Jan 2026 | Open source infrastructure: safety docs, community guidelines |
+| Jan 2026 | Initial release with Zenodo publication |
+
 This repository contains the research, simulation, and hardware implementation files for a novel **Ternary (Base-3) Optical Computer** that uses wavelength-division multiplexing to bypass the fundamental limitations of electronic ternary logic.
 
 ## 🎯 The Big Idea
