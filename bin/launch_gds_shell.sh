@@ -1,6 +1,6 @@
 #!/bin/bash
 cd /home/jackwayne/Desktop/Optical_computing
-source activate_env.sh
+source bin/activate_env.sh
 python -i -c "
 import gdsfactory as gf
 gf.gpdk.PDK.activate()
