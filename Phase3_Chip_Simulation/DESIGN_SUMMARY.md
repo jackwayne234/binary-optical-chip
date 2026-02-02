@@ -32,19 +32,23 @@ This document describes a photonic integrated circuit implementing an 81-trit te
 λ_Green = 2 × λ_Red × λ_Blue / (λ_Red + λ_Blue) = 1.216 μm
 ```
 
-This ensures that R+B (=-1+1=0) and G+G (=0+0=0) produce the **same SFG output wavelength** (0.608 μm), enabling clean 3-detector readout.
+This ensures that R+B (=-1+1=0) and G+G (=0+0=0) produce the **same SFG output wavelength** (0.608 μm), enabling clean readout.
 
-### SFG Output wavelengths (DETECTOR wavelengths)
+### SFG Output wavelengths (5-DETECTOR configuration)
 
-| Detector | Wavelength | Result | Source combinations |
-|----------|------------|--------|---------------------|
-| DET_-1 | 0.681 μm | -1 | R+G |
-| DET_0 | 0.608 μm | 0 | R+B or G+G |
-| DET_+1 | 0.549 μm | +1 | G+B |
-| (overflow) | 0.775 μm | -2 | R+R |
-| (overflow) | 0.500 μm | +2 | B+B |
+All 5 possible arithmetic results are detected for full carry propagation:
+
+| Detector | Wavelength | Result | Source | Function |
+|----------|------------|--------|--------|----------|
+| DET_-2 | 0.775 μm | -2 | R+R | **Borrow** (carry out) |
+| DET_-1 | 0.681 μm | -1 | R+G | Normal result |
+| DET_0 | 0.608 μm | 0 | R+B or G+G | Normal result |
+| DET_+1 | 0.549 μm | +1 | G+B | Normal result |
+| DET_+2 | 0.500 μm | +2 | B+B | **Carry** (carry out) |
 
 *All output wavelengths verified by Meep FDTD simulation (February 2, 2026)*
+
+**Carry propagation:** When DET_±2 fires, the result digit is ∓1 (wraps around) and a carry/borrow propagates to the next trit position.
 
 ### Hierarchical organization
 
@@ -67,9 +71,9 @@ Physical layout: 3×3 grid of 9-trit processing elements.
 | Wavelength combiner | Merge selected wavelengths | 2 (one per operand) |
 | MMI 2×2 | Combine A and B operands | 1 |
 | SFG mixer | Ternary arithmetic (χ² nonlinear) | 1 |
-| Output splitter | Split to 3 detector paths | 1 |
-| Ring filter | Wavelength-selective detection | 3 (one per result) |
-| Photodetector | Output readout | 3 (DET_-1, DET_0, DET_+1) |
+| Output splitter | Split to 5 detector paths | 1 |
+| Ring filter | Wavelength-selective detection | 5 (one per result) |
+| Photodetector | Output readout | 5 (DET_-2 to DET_+2) |
 
 ---
 
@@ -128,25 +132,31 @@ Physical layout: 3×3 grid of 9-trit processing elements.
 | input_a | Left edge, upper | Operand A (multi-wavelength) |
 | input_b | Left edge, lower | Operand B (multi-wavelength) |
 
-### Electrical outputs (SFG detection)
+### Electrical outputs (5-detector SFG detection)
 
-The output stage detects the **SFG output wavelengths** (not input wavelengths). Each detector is tuned via ring resonator filter to its target wavelength:
+The output stage detects all **SFG output wavelengths** including carry/borrow. Each detector is tuned via ring resonator filter to its target wavelength:
 
-| Signal | Wavelength | Ternary Result |
-|--------|------------|----------------|
-| DET_-1 | 0.681 μm | -1 |
-| DET_0 | 0.608 μm | 0 |
-| DET_+1 | 0.549 μm | +1 |
+| Signal | Wavelength | Ternary Result | Function |
+|--------|------------|----------------|----------|
+| DET_-2 | 0.775 μm | -2 | Borrow out |
+| DET_-1 | 0.681 μm | -1 | Result |
+| DET_0 | 0.608 μm | 0 | Result |
+| DET_+1 | 0.549 μm | +1 | Result |
+| DET_+2 | 0.500 μm | +2 | Carry out |
 
-**Detection logic:** Exactly one detector fires for each valid result. Firmware reads all three to determine the ternary output:
+**Detection logic:** Exactly one detector fires for each arithmetic result. Firmware reads all five to determine the output digit and carry:
 
-| DET_-1 | DET_0 | DET_+1 | Result |
-|--------|-------|--------|--------|
-| HIGH | low | low | -1 |
-| low | HIGH | low | 0 |
-| low | low | HIGH | +1 |
+| DET_-2 | DET_-1 | DET_0 | DET_+1 | DET_+2 | Digit | Carry |
+|--------|--------|-------|--------|--------|-------|-------|
+| HIGH | low | low | low | low | +1 | -1 (borrow) |
+| low | HIGH | low | low | low | -1 | 0 |
+| low | low | HIGH | low | low | 0 | 0 |
+| low | low | low | HIGH | low | +1 | 0 |
+| low | low | low | low | HIGH | -1 | +1 (carry) |
 
-*Note: Overflow results (±2) produce wavelengths outside the primary detector range and require separate handling (carry logic).*
+**Carry interpretation:**
+- Result -2: Output digit = +1, carry = -1 (borrow to next position)
+- Result +2: Output digit = -1, carry = +1 (carry to next position)
 
 ### Fiber coupling requirements
 

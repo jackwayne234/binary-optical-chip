@@ -256,6 +256,7 @@ def wavelength_splitter(
     Creates a wavelength splitter (demultiplexer / AWG-like).
 
     Splits input into separate wavelength channels.
+    Supports 2, 3, 4, or 5 outputs via cascaded 1x2 MMIs.
     """
     c = gf.Component(name)
 
@@ -264,19 +265,57 @@ def wavelength_splitter(
         c.add_port(name="input", port=mmi.ports["o1"])
         c.add_port(name="out1", port=mmi.ports["o2"])
         c.add_port(name="out2", port=mmi.ports["o3"])
-    else:
-        # Cascaded splitters
+    elif n_outputs == 3:
+        # Cascaded splitters: 1->2, then one branch ->2 more
         mmi1 = c << gf.components.mmi1x2()
         mmi2 = c << gf.components.mmi1x2()
         mmi2.dmove((30, -10))
 
-        # Route
         route_single(c, cross_section=XS, port1=mmi1.ports["o3"], port2=mmi2.ports["o1"])
 
         c.add_port(name="input", port=mmi1.ports["o1"])
         c.add_port(name="out1", port=mmi1.ports["o2"])
         c.add_port(name="out2", port=mmi2.ports["o2"])
         c.add_port(name="out3", port=mmi2.ports["o3"])
+    elif n_outputs == 4:
+        # Binary tree: 1->2->4
+        mmi1 = c << gf.components.mmi1x2()
+        mmi2 = c << gf.components.mmi1x2()
+        mmi3 = c << gf.components.mmi1x2()
+        mmi2.dmove((30, 10))
+        mmi3.dmove((30, -10))
+
+        route_single(c, cross_section=XS, port1=mmi1.ports["o2"], port2=mmi2.ports["o1"])
+        route_single(c, cross_section=XS, port1=mmi1.ports["o3"], port2=mmi3.ports["o1"])
+
+        c.add_port(name="input", port=mmi1.ports["o1"])
+        c.add_port(name="out1", port=mmi2.ports["o2"])
+        c.add_port(name="out2", port=mmi2.ports["o3"])
+        c.add_port(name="out3", port=mmi3.ports["o2"])
+        c.add_port(name="out4", port=mmi3.ports["o3"])
+    elif n_outputs == 5:
+        # 1->2, then each ->2 (gives 4), then one more split on center
+        # Structure: 1->2->4, plus one extra split = 5
+        mmi1 = c << gf.components.mmi1x2()
+        mmi2 = c << gf.components.mmi1x2()
+        mmi3 = c << gf.components.mmi1x2()
+        mmi4 = c << gf.components.mmi1x2()
+        mmi2.dmove((30, 15))
+        mmi3.dmove((30, -15))
+        mmi4.dmove((60, -5))  # Extra split from mmi3 upper output
+
+        route_single(c, cross_section=XS, port1=mmi1.ports["o2"], port2=mmi2.ports["o1"])
+        route_single(c, cross_section=XS, port1=mmi1.ports["o3"], port2=mmi3.ports["o1"])
+        route_single(c, cross_section=XS, port1=mmi3.ports["o2"], port2=mmi4.ports["o1"])
+
+        c.add_port(name="input", port=mmi1.ports["o1"])
+        c.add_port(name="out1", port=mmi2.ports["o2"])   # Top
+        c.add_port(name="out2", port=mmi2.ports["o3"])
+        c.add_port(name="out3", port=mmi4.ports["o2"])   # Center (from extra split)
+        c.add_port(name="out4", port=mmi4.ports["o3"])
+        c.add_port(name="out5", port=mmi3.ports["o3"])   # Bottom
+    else:
+        raise ValueError(f"n_outputs must be 2, 3, 4, or 5, got {n_outputs}")
 
     return c
 
@@ -479,24 +518,27 @@ def optical_frontend(
 
 def ternary_output_stage(
     name: str = "output_stage",
-    uid: str = ""
+    uid: str = "",
+    include_carry: bool = True
 ) -> gf.Component:
     """
     Creates a wavelength-discriminating output stage for SFG mixer results.
 
-    Structure: Input -> Splitter -> 3x Filters -> 3x Photodetectors
+    Structure: Input -> Splitter -> 5x Filters -> 5x Photodetectors
 
-    The mixer SFG output hits all three filtered detectors simultaneously.
+    The mixer SFG output hits all five filtered detectors simultaneously.
     Each detector is tuned to a specific SFG OUTPUT wavelength (not input wavelength).
 
-    Detector mapping (based on verified simulations):
-      - Det 1 (0.681 μm): Result = -1  (from R+G mixing)
-      - Det 2 (0.608 μm): Result = 0   (from R+B or G+G mixing)
-      - Det 3 (0.549 μm): Result = +1  (from G+B mixing)
+    Full detector mapping (all 5 results, verified by simulation):
+      - Det -2 (0.775 μm): Result = -2 (from R+R mixing) - CARRY/BORROW
+      - Det -1 (0.681 μm): Result = -1 (from R+G mixing)
+      - Det  0 (0.608 μm): Result =  0 (from R+B or G+G mixing)
+      - Det +1 (0.549 μm): Result = +1 (from G+B mixing)
+      - Det +2 (0.500 μm): Result = +2 (from B+B mixing) - CARRY
 
-    Overflow cases (±2) produce different wavelengths:
-      - 0.775 μm: Result = -2 (R+R) - optional overflow detector
-      - 0.500 μm: Result = +2 (B+B) - optional overflow detector
+    Args:
+        include_carry: If True, includes all 5 detectors (-2 to +2).
+                      If False, only 3 detectors (-1, 0, +1).
     """
     import uuid
     if not uid:
@@ -504,21 +546,35 @@ def ternary_output_stage(
 
     c = gf.Component(name)
 
-    # Detector wavelengths for the 3 main ternary results (verified by simulation)
-    DETECTOR_CONFIG = [
-        {'value': -1, 'wavelength_um': 0.681, 'name': 'Neg1'},   # R+G → -1
-        {'value':  0, 'wavelength_um': 0.608, 'name': 'Zero'},   # R+B or G+G → 0
-        {'value': +1, 'wavelength_um': 0.549, 'name': 'Pos1'},   # G+B → +1
+    # Full detector configuration for all 5 SFG output wavelengths (verified by simulation)
+    DETECTOR_CONFIG_FULL = [
+        {'value': -2, 'wavelength_um': 0.775, 'name': 'Neg2', 'is_carry': True},   # R+R → -2 (borrow)
+        {'value': -1, 'wavelength_um': 0.681, 'name': 'Neg1', 'is_carry': False},  # R+G → -1
+        {'value':  0, 'wavelength_um': 0.608, 'name': 'Zero', 'is_carry': False},  # R+B or G+G → 0
+        {'value': +1, 'wavelength_um': 0.549, 'name': 'Pos1', 'is_carry': False},  # G+B → +1
+        {'value': +2, 'wavelength_um': 0.500, 'name': 'Pos2', 'is_carry': True},   # B+B → +2 (carry)
     ]
 
-    # Splitter to send light to all three detector paths
-    splitter = c << wavelength_splitter(n_outputs=3, name=f"output_split_{uid}")
+    DETECTOR_CONFIG_BASIC = [
+        {'value': -1, 'wavelength_um': 0.681, 'name': 'Neg1', 'is_carry': False},
+        {'value':  0, 'wavelength_um': 0.608, 'name': 'Zero', 'is_carry': False},
+        {'value': +1, 'wavelength_um': 0.549, 'name': 'Pos1', 'is_carry': False},
+    ]
 
-    # Three filtered detector channels
+    detector_config = DETECTOR_CONFIG_FULL if include_carry else DETECTOR_CONFIG_BASIC
+    n_detectors = len(detector_config)
+
+    # Splitter to send light to all detector paths
+    splitter = c << wavelength_splitter(n_outputs=n_detectors, name=f"output_split_{uid}")
+
+    # Filtered detector channels
     y_spacing = 25
-    detector_x = 80
+    detector_x = 100 if include_carry else 80
+    center_index = n_detectors // 2
 
-    for i, det_info in enumerate(DETECTOR_CONFIG):
+    for i, det_info in enumerate(detector_config):
+        y_pos = (i - center_index) * y_spacing
+
         # Ring resonator filter tuned to SFG output wavelength
         filt = c << wavelength_selector(
             wavelength_um=det_info['wavelength_um'],
@@ -526,7 +582,7 @@ def ternary_output_stage(
             gap=0.15,
             name=f"filter_{det_info['name']}_{uid}"
         )
-        filt.dmove((40, (i - 1) * y_spacing))
+        filt.dmove((50, y_pos))
 
         # Photodetector after filter
         det = c << photodetector(
@@ -534,7 +590,7 @@ def ternary_output_stage(
             length=2.0,
             name=f"detect_{det_info['name']}_{uid}"
         )
-        det.dmove((detector_x, (i - 1) * y_spacing))
+        det.dmove((detector_x, y_pos))
 
         # Route splitter -> filter -> detector
         route_single(c, cross_section=XS,
@@ -544,14 +600,17 @@ def ternary_output_stage(
                     port1=filt.ports["output"],
                     port2=det.ports["input"])
 
-        # Label each detector with result value
-        c.add_label(f"DET_{det_info['value']:+d}", position=(detector_x + 15, (i - 1) * y_spacing), layer=LABEL_LAYER)
+        # Label each detector with result value (mark carry/borrow)
+        label_suffix = "_C" if det_info['is_carry'] else ""
+        c.add_label(f"DET_{det_info['value']:+d}{label_suffix}",
+                   position=(detector_x + 15, y_pos), layer=LABEL_LAYER)
 
     # Input port
     c.add_port(name="input", port=splitter.ports["input"])
 
     # Labels
-    c.add_label("OUT", position=(50, y_spacing + 10), layer=LABEL_LAYER)
+    c.add_label("OUT_FULL" if include_carry else "OUT",
+               position=(60, (center_index + 1) * y_spacing), layer=LABEL_LAYER)
 
     return c
 
