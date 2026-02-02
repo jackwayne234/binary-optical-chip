@@ -1,0 +1,46 @@
+Subject: MPW Inquiry - 81-Trit Ternary Optical Processor
+
+---
+
+Hello,
+
+I'm an independent researcher developing a ternary optical computing architecture that uses wavelength-division multiplexing for arithmetic operations. I'm interested in fabricating a proof-of-concept chip through your MPW program.
+
+*Project summary:*
+
+The design is an 81-trit optical ALU that encodes ternary logic states (-1, 0, +1) as three wavelengths (1.55, 1.30, and 1.00 μm). Arithmetic operations are performed via sum-frequency generation in a χ² nonlinear waveguide. The architecture is documented in a peer-reviewed publication on Zenodo (DOI: 10.5281/zenodo.18437600).
+
+*Design details:*
+
+- Die size estimate: ~4 × 6 mm (full 81-trit), smaller single-ALU test structures available
+- Waveguide width: 0.5 μm
+- Key components: ring resonators, MMI couplers, χ² mixer, photodetector
+- Generated with gdsfactory (generic PDK - ready for layer mapping)
+
+*Questions:*
+
+1. Is your platform compatible with this design? Specifically:
+   - Waveguide core index ~2.2 (LiNbO3 or high-index SiN)
+   - χ² nonlinear mixing capability (or can I bond/deposit nonlinear material?)
+
+2. What are your current MPW schedules and pricing for a design of this size?
+
+3. What PDK and design rules should I use to regenerate the layout for your process?
+
+4. Do you offer design review services before tape-out?
+
+I have a complete design summary, GDS file, and simulation data ready to share. The full project repository is public: https://github.com/jackwayne234/-wavelength-ternary-optical-computer
+
+Thank you for your time. I look forward to hearing from you.
+
+Best regards,
+
+Christopher Riner
+chrisriner45@gmail.com
+Chesapeake, VA
+
+---
+
+Attachments to include:
+- DESIGN_SUMMARY.md (or PDF version)
+- ternary_81trit_optimal.gds (if they request it)
