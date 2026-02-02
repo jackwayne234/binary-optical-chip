@@ -2,7 +2,7 @@
 
 ## Summary
 
-Extended the 81-trit ternary optical processor with **5-detector carry propagation** and **simplified AWG-based output architecture**, reducing component count by 45%.
+Extended the 81-trit ternary optical processor with **5-detector carry propagation**, **simplified AWG-based output**, **three arithmetic operations** (add/sub/mul), and **MZI selector option**.
 
 ---
 
@@ -39,37 +39,70 @@ Extended the 81-trit ternary optical processor with **5-detector carry propagati
 
 **Savings:** 405 ring resonators eliminated (45% component reduction)
 
-### 3. Updated Chip Generator
+### 3. Electronic Carry Chain
 
-New/modified functions in `Research/programs/ternary_chip_generator.py`:
+Added GPIO-based carry propagation for multi-trit arithmetic:
 
-```python
-# Extended AWG to support 5 channels
-awg_demux(n_channels=5, name="awg")
+| Signal | Function | Direction |
+|--------|----------|-----------|
+| CARRY_OUT_POS | Carry (+1) from DET_+2 | Output |
+| CARRY_OUT_NEG | Borrow (-1) from DET_-2 | Output |
+| CARRY_IN | Carry/borrow from previous trit | Input |
 
-# New simplified output stage
-ternary_output_stage_simple(name, uid)
+**Firmware algorithm:**
+1. Read all photodetector outputs simultaneously
+2. For each trit N (LSB to MSB): add carry from trit N-1
+3. Result = (A[N] + B[N] + carry_in) mod 3
+4. Generate new carry for trit N+1
 
-# Updated generators with simplified_output parameter
-generate_complete_alu(name, simplified_output=True)
-generate_complete_81_trit(name, simplified_output=True)
-```
+### 4. Three Arithmetic Operations
 
-### 4. Generated GDS Files
+| Operation | Mixer | Physics | Length | GDS Layer |
+|-----------|-------|---------|--------|-----------|
+| **Addition** | SFG | χ² sum-frequency | 20 μm | (2, 0) |
+| **Subtraction** | DFG | χ² difference-frequency | 25 μm | (4, 0) |
+| **Multiplication** | Kerr | χ³ four-wave mixing | 30 μm | (7, 0) |
 
-| File | Description | Size |
-|------|-------------|------|
-| `ternary_81trit_simplified.gds` | **RECOMMENDED** - AWG output | 3.0 MB |
-| `ternary_81trit_5det_complete.gds` | Ring filter output | 3.2 MB |
-| `ternary_complete_alu_5det.gds` | Single ALU with 5 detectors | - |
+**Multiplication truth table (balanced ternary):**
+| A | B | A × B |
+|---|---|-------|
+| -1 | -1 | +1 |
+| -1 | +1 | -1 |
+| +1 | +1 | +1 |
+| 0 | any | 0 |
 
-### 5. Updated Documentation
+### 5. MZI Selector Option
 
-- `Phase3_Chip_Simulation/DESIGN_SUMMARY.md` → Version 1.2
-  - Simplified architecture with AWG output
-  - Total component count table
-  - Updated truth table with digit/carry columns
-  - GDS layer definitions (added 5, 6, 100)
+Added Mach-Zehnder Interferometer switches as alternative to ring resonators:
+
+| Selector | Extinction | Fab Tolerance | Size | Control |
+|----------|------------|---------------|------|---------|
+| Ring (default) | ~20 dB | Sensitive | Compact | Wavelength-tuned |
+| **MZI** | >30 dB | Tolerant | Larger | Voltage (heater) |
+
+New components:
+- `mzi_switch()` - Basic MZI with heater electrode
+- `wavelength_selector_mzi()` - MZI-based wavelength selector
+
+### 6. Updated Foundry Inquiry Email
+
+Updated `Phase3_Chip_Simulation/foundry_inquiry_email.txt` with:
+- v1.2 simplified architecture specs
+- Component counts (486 rings, 243 AWGs, 405 detectors)
+- Optimized wavelengths
+- Target foundries with specialties
+
+---
+
+## Generated GDS Files
+
+| File | Size | Operation | Selectors | Notes |
+|------|------|-----------|-----------|-------|
+| `ternary_81trit_simplified.gds` | 3.0 MB | ADD | Ring | **RECOMMENDED** |
+| `ternary_81trit_add_mzi.gds` | 5.1 MB | ADD | MZI | Larger, more tolerant |
+| `ternary_81trit_sub.gds` | 3.0 MB | SUB | Ring | DFG mixer |
+| `ternary_81trit_mul.gds` | 3.0 MB | MUL | Ring | Kerr mixer |
+| `ternary_81trit_5det_complete.gds` | 3.2 MB | ADD | Ring | Ring filter output |
 
 ---
 
@@ -77,37 +110,42 @@ generate_complete_81_trit(name, simplified_output=True)
 
 ### Architecture
 ```
-Ternary81_Simplified
+Ternary81 Processor
 ├── 1 Centered Frontend (Kerr clock + Y-junction)
 ├── 81 ALUs, each with:
 │   ├── 2 AWG demux (3-ch) - input R/G/B separation
-│   ├── 6 ring resonator selectors - wavelength gating
+│   ├── 6 selectors (ring or MZI) - wavelength gating
 │   ├── 2 wavelength combiners
 │   ├── 1 MMI 2×2 - operand combiner
-│   ├── 1 SFG mixer - ternary arithmetic
-│   ├── 1 AWG demux (5-ch) - output separation  ← SIMPLIFIED
-│   └── 5 photodetectors (DET_-2 to DET_+2)
-└── Full carry propagation support
+│   ├── 1 mixer (SFG/DFG/Kerr) - arithmetic operation
+│   ├── 1 AWG demux (5-ch) - output separation
+│   ├── 5 photodetectors (DET_-2 to DET_+2)
+│   └── 3 carry pads (CARRY_IN, CARRY_OUT_POS, CARRY_OUT_NEG)
+└── Carry chain wiring labels
 ```
 
 ### Component Counts
 | Component | Count |
 |-----------|-------|
-| Ring resonators | 486 |
+| Ring resonators | 486 (or 0 if MZI) |
+| MZI switches | 0 (or 486 if MZI) |
 | AWG demux | 243 |
-| SFG mixers | 81 |
+| Mixers | 81 |
 | Photodetectors | 405 |
 | MMI couplers | ~500 |
 
-### Truth Table (Single Trit Addition)
-| A | B | A+B | Output λ | Detector | Digit | Carry |
-|---|---|-----|----------|----------|-------|-------|
-| -1 | -1 | -2 | 0.775 μm | DET_-2 | +1 | -1 |
-| -1 | 0 | -1 | 0.681 μm | DET_-1 | -1 | 0 |
-| -1 | +1 | 0 | 0.608 μm | DET_0 | 0 | 0 |
-| 0 | 0 | 0 | 0.608 μm | DET_0 | 0 | 0 |
-| 0 | +1 | +1 | 0.549 μm | DET_+1 | +1 | 0 |
-| +1 | +1 | +2 | 0.500 μm | DET_+2 | -1 | +1 |
+### GDS Layers
+| Layer | Purpose |
+|-------|---------|
+| (1, 0) | Waveguide core |
+| (2, 0) | SFG mixer (addition) |
+| (3, 0) | Photodetector |
+| (4, 0) | DFG mixer (subtraction) |
+| (5, 0) | Kerr resonator |
+| (6, 0) | AWG body |
+| (7, 0) | MUL mixer (multiplication) |
+| (10, 0) | MZI heater/electrode |
+| (100, 0) | Labels |
 
 ---
 
@@ -117,6 +155,9 @@ Ternary81_Simplified
 2. `0089463` - Add 5-detector output stage with carry propagation
 3. `6f01ec5` - Add simplified output stage using AWG demux
 4. `3ae6727` - Update design summary for simplified AWG architecture (v1.2)
+5. `57045b8` - Add afternoon session notes
+6. `5291a37` - Add carry chain, sub/mul operations, and MZI selectors
+7. `b3de892` - Update design summary to v1.3 with full ALU capabilities
 
 ---
 
@@ -124,50 +165,86 @@ Ternary81_Simplified
 
 | File | Changes |
 |------|---------|
-| `Research/programs/ternary_chip_generator.py` | AWG 5-ch, simplified output, carry detection |
-| `Phase3_Chip_Simulation/DESIGN_SUMMARY.md` | v1.2 with simplified architecture |
+| `Research/programs/ternary_chip_generator.py` | AWG 5-ch, carry chain, DFG/MUL mixers, MZI switches |
+| `Phase3_Chip_Simulation/DESIGN_SUMMARY.md` | v1.3 with full capabilities |
+| `Phase3_Chip_Simulation/foundry_inquiry_email.txt` | Updated specs and foundry list |
 
 ---
 
-## Next Steps (For Future Sessions)
+## Usage Examples
 
-1. **Carry chain implementation** - Connect DET_±2 outputs between adjacent trits for ripple carry
-2. **Subtraction/multiplication** - Add DFG for subtraction, cascaded mixers for multiplication
-3. **Foundry contact** - Send updated design summary to foundries
-4. **Input MZI simplification** - Replace ring selectors with Mach-Zehnder switches (further simplification)
-5. **Power budget analysis** - Calculate optical loss through full signal path
+```python
+# Generate 81-trit ADD chip with ring selectors (default, recommended)
+chip = generate_complete_81_trit(
+    name='T81_ADD',
+    operation='add',
+    selector_type='ring',
+    simplified_output=True
+)
+
+# Generate 81-trit SUB chip
+chip = generate_complete_81_trit(
+    name='T81_SUB',
+    operation='sub'
+)
+
+# Generate 81-trit MUL chip with MZI selectors
+chip = generate_complete_81_trit(
+    name='T81_MUL_MZI',
+    operation='mul',
+    selector_type='mzi'
+)
+
+# Generate single ALU for testing
+alu = generate_complete_alu(
+    name='TestALU',
+    operation='add',
+    selector_type='ring',
+    simplified_output=True
+)
+```
 
 ---
 
 ## Commands Reference
 
 ```bash
-# Generate simplified 81-trit chip
+# Activate environment
 source bin/activate_env.sh
-python3 -c "
-from Research.programs.ternary_chip_generator import generate_complete_81_trit
-chip = generate_complete_81_trit(name='Ternary81', simplified_output=True)
-chip.write_gds('Research/data/gds/ternary_81trit_simplified.gds')
-"
 
-# Open in KLayout
-klayout Research/data/gds/ternary_81trit_simplified.gds
+# Run interactive chip generator
+python3 Research/programs/ternary_chip_generator.py
 
-# Generate single ALU for testing
-python3 -c "
-from Research.programs.ternary_chip_generator import generate_complete_alu
-alu = generate_complete_alu(simplified_output=True)
-alu.write_gds('Research/data/gds/test_alu.gds')
-"
+# Open chips in KLayout
+klayout Research/data/gds/ternary_81trit_simplified.gds  # ADD + Ring
+klayout Research/data/gds/ternary_81trit_add_mzi.gds     # ADD + MZI
+klayout Research/data/gds/ternary_81trit_sub.gds         # SUB
+klayout Research/data/gds/ternary_81trit_mul.gds         # MUL
+
+# Check design summary
+cat Phase3_Chip_Simulation/DESIGN_SUMMARY.md
 ```
+
+---
+
+## Next Steps (For Future Sessions)
+
+1. **Division operation** - Add DFG-based division (inverse of multiplication)
+2. **Multi-chip system** - Connect multiple 81-trit chips for larger word sizes
+3. **Foundry submission** - Send inquiry emails to target foundries
+4. **Firmware development** - ESP32/FPGA code for carry propagation and control
+5. **Power budget analysis** - Calculate optical loss through full signal path
+6. **Timing analysis** - Propagation delay through carry chain
 
 ---
 
 ## Key Design Decisions Made
 
-1. **5 detectors instead of 3** - Enables full carry propagation for multi-trit arithmetic
+1. **5 detectors** - Enables full carry propagation for multi-trit arithmetic
 2. **AWG demux for output** - Simpler than ring filters, same functionality
-3. **Simplified as default** - `simplified_output=True` is now the default
+3. **Electronic carry** - Simpler than optical feedback, firmware handles propagation
+4. **Three operations** - SFG (add), DFG (sub), Kerr (mul) cover basic arithmetic
+5. **MZI option** - Better for fabs with less precise lithography
 
 ---
 
