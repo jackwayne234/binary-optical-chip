@@ -286,6 +286,74 @@ def photodetector(
     return c
 
 
+def ternary_output_stage(
+    name: str = "output_stage"
+) -> gf.Component:
+    """
+    Creates a wavelength-discriminating output stage.
+
+    Structure: Input -> Splitter -> 3x Filters -> 3x Photodetectors
+
+    The mixer output hits all three filtered detectors simultaneously.
+    Each detector only responds to its wavelength (R, G, or B).
+    Firmware reads all three to determine which colors are present.
+
+    Output combinations:
+      - Red only:        result = -1 (or -2)
+      - Green only:      result = 0
+      - Blue only:       result = +1 (or +2)
+      - Red + Blue:      result = 0 (purple = cancellation)
+      - Red + Green:     result = -1
+      - Green + Blue:    result = +1
+      - R + G + B:       all three present
+    """
+    c = gf.Component(name)
+
+    # Splitter to send light to all three detector paths
+    splitter = c << wavelength_splitter(n_outputs=3, name=f"output_split")
+
+    # Three filtered detector channels
+    y_spacing = 25
+    detector_x = 80
+
+    for i, (trit, info) in enumerate(TERNARY_ENCODING.items()):
+        # Ring resonator filter for this wavelength
+        filt = c << wavelength_selector(
+            wavelength_um=info['wavelength_um'],
+            radius=5.0,
+            name=f"filter_{info['name']}"
+        )
+        filt.dmove((40, (i - 1) * y_spacing))
+
+        # Photodetector after filter
+        det = c << photodetector(
+            width=4.0,
+            length=8.0,
+            name=f"detect_{info['name']}"
+        )
+        det.dmove((detector_x, (i - 1) * y_spacing))
+
+        # Route splitter -> filter -> detector
+        route_single(c, cross_section=XS,
+                    port1=splitter.ports[f"out{i+1}"],
+                    port2=filt.ports["input"])
+        route_single(c, cross_section=XS,
+                    port1=filt.ports["output"],
+                    port2=det.ports["input"])
+
+        # Label each detector output
+        c.add_label(f"V_{info['color']}", position=(detector_x + 15, (i - 1) * y_spacing))
+
+    # Input port
+    c.add_port(name="input", port=splitter.ports["input"])
+
+    # Labels
+    c.add_label("Output Stage", position=(50, y_spacing + 10))
+    c.add_label("(3-channel wavelength detector)", position=(50, y_spacing + 5))
+
+    return c
+
+
 # =============================================================================
 # HIGH-LEVEL CHIP GENERATORS
 # =============================================================================
@@ -383,12 +451,12 @@ def generate_ternary_alu(
     route_single(c, cross_section=XS, port1=op_combiner.ports["o1"], port2=mixer.ports["input"])
 
     # =========================
-    # 4. OUTPUT DETECTION
+    # 4. OUTPUT DETECTION (3-channel)
     # =========================
-    detector = c << photodetector(name=f"result_detector_{uid}")
-    detector.dmove((300, 0))
+    output_stage = c << ternary_output_stage(name=f"output_{uid}")
+    output_stage.dmove((300, 0))
 
-    route_single(c, cross_section=XS, port1=mixer.ports["output"], port2=detector.ports["input"])
+    route_single(c, cross_section=XS, port1=mixer.ports["output"], port2=output_stage.ports["input"])
 
     # =========================
     # 5. LABELS & METADATA
@@ -396,7 +464,7 @@ def generate_ternary_alu(
     c.add_label(f"Ternary ALU - Operations: {', '.join(operations)}", position=(150, 100))
     c.add_label("Input A (-1, 0, +1)", position=(0, 80))
     c.add_label("Input B (-1, 0, +1)", position=(0, -80))
-    c.add_label("Result", position=(300, 20))
+    c.add_label("Result (V_red, V_green, V_blue)", position=(300, 40))
 
     # Add input ports
     c.add_port(name="input_a", port=input_a.ports["input"])

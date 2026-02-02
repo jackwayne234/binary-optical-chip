@@ -102,7 +102,25 @@ Physical layout: 3×3 grid of 9-trit processing elements.
 |------|----------|----------|
 | input_a | Left edge, upper | Operand A (multi-wavelength) |
 | input_b | Left edge, lower | Operand B (multi-wavelength) |
-| output | Right edge, center | Result (to photodetector) |
+
+### Electrical outputs (active low/high)
+
+| Signal | Function |
+|--------|----------|
+| V_red | Red (1.55 μm) detected at output |
+| V_green | Green (1.30 μm) detected at output |
+| V_blue | Blue (1.00 μm) detected at output |
+
+The output stage splits the mixer result to three wavelength-filtered photodetectors. Firmware reads all three simultaneously to determine which colors are present:
+
+| Detected | Meaning |
+|----------|---------|
+| Red only | -1 (or -2 with carry) |
+| Green only | 0 |
+| Blue only | +1 (or +2 with carry) |
+| Red + Blue | 0 (cancellation: -1 + 1) |
+| Red + Green | -1 |
+| Green + Blue | +1 |
 
 ### Fiber coupling requirements
 
