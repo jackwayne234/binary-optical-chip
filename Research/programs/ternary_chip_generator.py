@@ -409,41 +409,146 @@ def awg_demux(
     Creates an Arrayed Waveguide Grating (AWG) demultiplexer.
 
     Separates input wavelengths into separate output channels.
-    For ternary: separates R (1.55um), G (1.30um), B (1.00um).
+    For ternary input: separates R (1.55um), G (1.216um), B (1.00um).
+    For output detection: separates 5 SFG wavelengths (0.775, 0.681, 0.608, 0.549, 0.500 um).
 
     Args:
-        n_channels: Number of output wavelength channels
+        n_channels: Number of output wavelength channels (3 or 5)
         name: Component name
     """
     c = gf.Component(name)
 
-    # AWG representation using star coupler + waveguide array + star coupler
-    # Simplified as cascaded MMIs for layout purposes
+    if n_channels == 3:
+        # 3-channel AWG for input demux (R/G/B)
+        input_mmi = c << gf.components.mmi1x2()
+        input_mmi.dmove((0, 0))
 
-    # Input star coupler (1 to N)
-    input_mmi = c << gf.components.mmi1x2()
-    input_mmi.dmove((0, 0))
+        mmi2 = c << gf.components.mmi1x2()
+        mmi2.dmove((30, -10))
 
-    # Second stage split
-    mmi2 = c << gf.components.mmi1x2()
-    mmi2.dmove((30, -10))
+        route_single(c, cross_section=XS, port1=input_mmi.ports["o3"], port2=mmi2.ports["o1"])
 
-    # Route
-    route_single(c, cross_section=XS, port1=input_mmi.ports["o3"], port2=mmi2.ports["o1"])
+        # AWG body marker (layer 6)
+        c.add_polygon(
+            [(10, -25), (50, -25), (50, 15), (10, 15)],
+            layer=(6, 0)
+        )
+        c.add_label("AWG_3ch", position=(30, 20), layer=LABEL_LAYER)
 
-    # AWG body marker (layer 6)
-    c.add_polygon(
-        [(10, -25), (50, -25), (50, 15), (10, 15)],
-        layer=(6, 0)
-    )
+        c.add_port(name="input", port=input_mmi.ports["o1"])
+        c.add_port(name="out_1", port=input_mmi.ports["o2"])
+        c.add_port(name="out_2", port=mmi2.ports["o2"])
+        c.add_port(name="out_3", port=mmi2.ports["o3"])
+        # Legacy port names for compatibility
+        c.add_port(name="out_r", port=input_mmi.ports["o2"])
+        c.add_port(name="out_g", port=mmi2.ports["o2"])
+        c.add_port(name="out_b", port=mmi2.ports["o3"])
 
-    c.add_label("AWG", position=(30, 20), layer=LABEL_LAYER)
+    elif n_channels == 5:
+        # 5-channel AWG for output demux (SFG wavelengths)
+        # Structure: 1->2->4, then one branch splits again for 5th channel
+        mmi1 = c << gf.components.mmi1x2()
+        mmi2 = c << gf.components.mmi1x2()
+        mmi3 = c << gf.components.mmi1x2()
+        mmi4 = c << gf.components.mmi1x2()
 
-    # Ports: 1 input, 3 outputs (R, G, B)
-    c.add_port(name="input", port=input_mmi.ports["o1"])
-    c.add_port(name="out_r", port=input_mmi.ports["o2"])  # Red (1550nm)
-    c.add_port(name="out_g", port=mmi2.ports["o2"])       # Green (1300nm)
-    c.add_port(name="out_b", port=mmi2.ports["o3"])       # Blue (1000nm)
+        mmi1.dmove((0, 0))
+        mmi2.dmove((30, 12))
+        mmi3.dmove((30, -12))
+        mmi4.dmove((60, 0))
+
+        route_single(c, cross_section=XS, port1=mmi1.ports["o2"], port2=mmi2.ports["o1"])
+        route_single(c, cross_section=XS, port1=mmi1.ports["o3"], port2=mmi3.ports["o1"])
+        route_single(c, cross_section=XS, port1=mmi3.ports["o2"], port2=mmi4.ports["o1"])
+
+        # AWG body marker (layer 6) - larger for 5-channel
+        c.add_polygon(
+            [(5, -30), (80, -30), (80, 30), (5, 30)],
+            layer=(6, 0)
+        )
+        c.add_label("AWG_5ch", position=(40, 35), layer=LABEL_LAYER)
+
+        c.add_port(name="input", port=mmi1.ports["o1"])
+        c.add_port(name="out_1", port=mmi2.ports["o2"])   # 0.775 μm (DET_-2)
+        c.add_port(name="out_2", port=mmi2.ports["o3"])   # 0.681 μm (DET_-1)
+        c.add_port(name="out_3", port=mmi4.ports["o2"])   # 0.608 μm (DET_0)
+        c.add_port(name="out_4", port=mmi4.ports["o3"])   # 0.549 μm (DET_+1)
+        c.add_port(name="out_5", port=mmi3.ports["o3"])   # 0.500 μm (DET_+2)
+
+    else:
+        raise ValueError(f"n_channels must be 3 or 5, got {n_channels}")
+
+    return c
+
+
+def ternary_output_stage_simple(
+    name: str = "output_simple",
+    uid: str = ""
+) -> gf.Component:
+    """
+    SIMPLIFIED output stage using single AWG demux instead of 5 ring filters.
+
+    Structure: Input -> AWG (5-ch) -> 5x Photodetectors
+
+    This replaces:
+      - 1x 5-way splitter
+      - 5x ring resonator filters
+    With:
+      - 1x 5-channel AWG demux
+
+    Component reduction: 6 components -> 1 component (per ALU)
+    Total savings for 81 ALUs: 405 ring resonators eliminated
+
+    Output channels (SFG wavelengths):
+      - Ch1 (0.775 μm): Result = -2 (borrow)
+      - Ch2 (0.681 μm): Result = -1
+      - Ch3 (0.608 μm): Result = 0
+      - Ch4 (0.549 μm): Result = +1
+      - Ch5 (0.500 μm): Result = +2 (carry)
+    """
+    import uuid
+    if not uid:
+        uid = str(uuid.uuid4())[:8]
+
+    c = gf.Component(name)
+
+    # Single 5-channel AWG demux replaces splitter + 5 ring filters
+    awg = c << awg_demux(n_channels=5, name=f"awg_out_{uid}")
+
+    # 5 photodetectors directly connected to AWG outputs
+    DETECTOR_CONFIG = [
+        {'value': -2, 'wavelength_um': 0.775, 'name': 'Neg2', 'port': 'out_1'},
+        {'value': -1, 'wavelength_um': 0.681, 'name': 'Neg1', 'port': 'out_2'},
+        {'value':  0, 'wavelength_um': 0.608, 'name': 'Zero', 'port': 'out_3'},
+        {'value': +1, 'wavelength_um': 0.549, 'name': 'Pos1', 'port': 'out_4'},
+        {'value': +2, 'wavelength_um': 0.500, 'name': 'Pos2', 'port': 'out_5'},
+    ]
+
+    y_positions = [24, 12, 0, -12, -24]  # Match AWG output positions
+
+    for i, det_info in enumerate(DETECTOR_CONFIG):
+        det = c << photodetector(
+            width=0.5,
+            length=2.0,
+            name=f"det_{det_info['name']}_{uid}"
+        )
+        det.dmove((95, y_positions[i]))
+
+        # Route AWG output directly to detector
+        route_single(c, cross_section=XS,
+                    port1=awg.ports[det_info['port']],
+                    port2=det.ports["input"])
+
+        # Label
+        is_carry = det_info['value'] in [-2, +2]
+        label_suffix = "_C" if is_carry else ""
+        c.add_label(f"D{det_info['value']:+d}{label_suffix}",
+                   position=(110, y_positions[i]), layer=LABEL_LAYER)
+
+    # Input port
+    c.add_port(name="input", port=awg.ports["input"])
+
+    c.add_label("OUT_AWG", position=(50, 40), layer=LABEL_LAYER)
 
     return c
 
@@ -829,7 +934,8 @@ def generate_full_processor(
 
 
 def generate_complete_alu(
-    name: str = "TernaryComplete"
+    name: str = "TernaryComplete",
+    simplified_output: bool = True
 ) -> gf.Component:
     """
     Generates a complete single-trit ALU with optical frontend and output stage.
@@ -840,9 +946,13 @@ def generate_complete_alu(
                                                                   ↓
                                                             SFG Mixer
                                                                   ↓
-                                                         Output Stage (3 detectors)
+                                                         Output Stage (5 detectors)
                                                                   ↓
-                                                         DET_R, DET_G, DET_B
+                                                         DET_-2 to DET_+2
+
+    Args:
+        simplified_output: If True, uses single AWG demux (fewer components).
+                          If False, uses 5 ring filters (more precise but complex).
     """
     import uuid
     uid = str(uuid.uuid4())[:8]
@@ -922,9 +1032,12 @@ def generate_complete_alu(
     route_single(c, cross_section=XS, port1=op_combiner.ports["o3"], port2=mixer.ports["input"])
 
     # =========================
-    # 6. OUTPUT STAGE (3 detectors)
+    # 6. OUTPUT STAGE (5 detectors)
     # =========================
-    output = c << ternary_output_stage(name=f"output_{uid}", uid=uid)
+    if simplified_output:
+        output = c << ternary_output_stage_simple(name=f"output_{uid}", uid=uid)
+    else:
+        output = c << ternary_output_stage(name=f"output_{uid}", uid=uid)
     output.dmove((480, 0))
 
     route_single(c, cross_section=XS, port1=mixer.ports["output"], port2=output.ports["input"])
@@ -1052,7 +1165,8 @@ def cascaded_splitter_1to9(
 
 
 def generate_complete_81_trit(
-    name: str = "Ternary81_Complete"
+    name: str = "Ternary81_Complete",
+    simplified_output: bool = True
 ) -> gf.Component:
     """
     Generates a complete 81-trit processor with CENTERED optical frontend.
@@ -1062,6 +1176,11 @@ def generate_complete_81_trit(
       - Splitter trees radiate outward in all directions
       - 81 ALUs arranged in 9×9 grid around the center
       - 3×3 zone structure (9 zones × 9 ALUs each)
+
+    Args:
+        simplified_output: If True (default), uses single AWG demux per ALU.
+                          Reduces component count by ~40% (405 fewer ring resonators).
+                          If False, uses 5 ring filters per ALU (more precise).
 
     Signal flow:
       CW Laser → Kerr Clock → Y-Junction (center of chip)
@@ -1245,8 +1364,11 @@ def generate_complete_81_trit(
 
                     route_single(c, cross_section=XS, port1=op_comb.ports["o3"], port2=mixer.ports["input"])
 
-                    # --- Output Stage (3-channel detector) ---
-                    output = c << ternary_output_stage(name=f"out_t{trit_index}_{uid}", uid=uid)
+                    # --- Output Stage (5-channel detector) ---
+                    if simplified_output:
+                        output = c << ternary_output_stage_simple(name=f"out_t{trit_index}_{uid}", uid=uid)
+                    else:
+                        output = c << ternary_output_stage(name=f"out_t{trit_index}_{uid}", uid=uid)
                     output.dmove((x_pos + 320, y_pos))
 
                     route_single(c, cross_section=XS, port1=mixer.ports["output"], port2=output.ports["input"])
