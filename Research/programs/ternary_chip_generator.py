@@ -748,6 +748,119 @@ def generate_full_processor(
     return c
 
 
+def generate_complete_alu(
+    name: str = "TernaryComplete"
+) -> gf.Component:
+    """
+    Generates a complete single-trit ALU with optical frontend and output stage.
+
+    Complete signal path:
+      CW Laser → Kerr Clock → Y-Split → AWG_A → Selectors_A → Combiner
+                                     → AWG_B → Selectors_B → Combiner
+                                                                  ↓
+                                                            SFG Mixer
+                                                                  ↓
+                                                         Output Stage (3 detectors)
+                                                                  ↓
+                                                         DET_R, DET_G, DET_B
+    """
+    import uuid
+    uid = str(uuid.uuid4())[:8]
+
+    c = gf.Component(name)
+
+    # =========================
+    # 1. OPTICAL FRONTEND
+    # =========================
+    frontend = c << optical_frontend(name=f"frontend_{uid}", uid=uid)
+    frontend.dmove((0, 0))
+
+    # =========================
+    # 2. INPUT SELECTORS FOR A
+    # =========================
+    # Three selectors for R, G, B on operand A
+    sel_a_r = c << wavelength_selector(wavelength_um=1.55, name=f"sel_a_r_{uid}")
+    sel_a_g = c << wavelength_selector(wavelength_um=1.30, name=f"sel_a_g_{uid}")
+    sel_a_b = c << wavelength_selector(wavelength_um=1.00, name=f"sel_a_b_{uid}")
+
+    sel_a_r.dmove((200, 60))
+    sel_a_g.dmove((200, 30))
+    sel_a_b.dmove((200, 0))
+
+    # Route frontend AWG_A outputs to selectors
+    route_single(c, cross_section=XS, port1=frontend.ports["a_red"], port2=sel_a_r.ports["input"])
+    route_single(c, cross_section=XS, port1=frontend.ports["a_green"], port2=sel_a_g.ports["input"])
+    route_single(c, cross_section=XS, port1=frontend.ports["a_blue"], port2=sel_a_b.ports["input"])
+
+    # Combiner for A
+    comb_a = c << wavelength_combiner(n_inputs=3, name=f"comb_a_{uid}")
+    comb_a.dmove((280, 30))
+
+    route_single(c, cross_section=XS, port1=sel_a_r.ports["output"], port2=comb_a.ports["in1"])
+    route_single(c, cross_section=XS, port1=sel_a_g.ports["output"], port2=comb_a.ports["in2"])
+    route_single(c, cross_section=XS, port1=sel_a_b.ports["output"], port2=comb_a.ports["in3"])
+
+    # =========================
+    # 3. INPUT SELECTORS FOR B
+    # =========================
+    sel_b_r = c << wavelength_selector(wavelength_um=1.55, name=f"sel_b_r_{uid}")
+    sel_b_g = c << wavelength_selector(wavelength_um=1.30, name=f"sel_b_g_{uid}")
+    sel_b_b = c << wavelength_selector(wavelength_um=1.00, name=f"sel_b_b_{uid}")
+
+    sel_b_r.dmove((200, -60))
+    sel_b_g.dmove((200, -30))
+    sel_b_b.dmove((200, 0 - 60))
+
+    # Route frontend AWG_B outputs to selectors
+    route_single(c, cross_section=XS, port1=frontend.ports["b_red"], port2=sel_b_r.ports["input"])
+    route_single(c, cross_section=XS, port1=frontend.ports["b_green"], port2=sel_b_g.ports["input"])
+    route_single(c, cross_section=XS, port1=frontend.ports["b_blue"], port2=sel_b_b.ports["input"])
+
+    # Combiner for B
+    comb_b = c << wavelength_combiner(n_inputs=3, name=f"comb_b_{uid}")
+    comb_b.dmove((280, -60))
+
+    route_single(c, cross_section=XS, port1=sel_b_r.ports["output"], port2=comb_b.ports["in1"])
+    route_single(c, cross_section=XS, port1=sel_b_g.ports["output"], port2=comb_b.ports["in2"])
+    route_single(c, cross_section=XS, port1=sel_b_b.ports["output"], port2=comb_b.ports["in3"])
+
+    # =========================
+    # 4. OPERATION COMBINER
+    # =========================
+    op_combiner = c << gf.components.mmi2x2()
+    op_combiner.dmove((380, 0))
+
+    route_single(c, cross_section=XS, port1=comb_a.ports["output"], port2=op_combiner.ports["o1"])
+    route_single(c, cross_section=XS, port1=comb_b.ports["output"], port2=op_combiner.ports["o2"])
+
+    # =========================
+    # 5. SFG MIXER
+    # =========================
+    mixer = c << sfg_mixer(length=30, name=f"mixer_{uid}")
+    mixer.dmove((430, 0))
+
+    route_single(c, cross_section=XS, port1=op_combiner.ports["o3"], port2=mixer.ports["input"])
+
+    # =========================
+    # 6. OUTPUT STAGE (3 detectors)
+    # =========================
+    output = c << ternary_output_stage(name=f"output_{uid}", uid=uid)
+    output.dmove((480, 0))
+
+    route_single(c, cross_section=XS, port1=mixer.ports["output"], port2=output.ports["input"])
+
+    # =========================
+    # 7. LABELS
+    # =========================
+    c.add_label("COMPLETE_ALU", position=(250, 100), layer=LABEL_LAYER)
+    c.add_label("LASER_IN", position=(-20, 0), layer=LABEL_LAYER)
+
+    # Add port for laser input
+    c.add_port(name="laser_in", port=frontend.ports["laser_in"])
+
+    return c
+
+
 def generate_81_trit_processor(
     name: str = "Ternary81"
 ) -> gf.Component:
@@ -870,8 +983,9 @@ def interactive_generator():
     print("  7. Power-of-3 Processor (3^N trits)")
     print("  8. 81-Trit Processor (3^4 - optimal)")
     print("  9. Custom component")
+    print(" 10. COMPLETE ALU (frontend + ALU + output) [NEW]")
 
-    choice = input("\nSelect template (1-9): ").strip()
+    choice = input("\nSelect template (1-10): ").strip()
 
     if choice == "1":
         chip = generate_ternary_adder()
@@ -910,6 +1024,11 @@ def interactive_generator():
         print("128-bit equivalent | 4.4 × 10^38 values")
         chip = generate_81_trit_processor()
         chip_name = "ternary_81trit_optimal"
+    elif choice == "10":
+        print("Generating COMPLETE ALU with optical frontend...")
+        print("  Laser → Kerr Clock → Y-Split → AWGs → Selectors → Mixer → 3-channel Output")
+        chip = generate_complete_alu()
+        chip_name = "ternary_complete_alu"
     elif choice == "9":
         print("\nCustom components:")
         print("  a. Wavelength Selector")
