@@ -1,8 +1,8 @@
 # Design Summary: 81-Trit Ternary Optical Processor
 
 *Prepared for foundry submission*
-*Version 1.2 | February 2, 2026*
-*Updated: Simplified architecture with AWG output demux*
+*Version 1.3 | February 2, 2026*
+*Updated: Full ALU with add/sub/mul, carry chain, and MZI selector option*
 
 ---
 
@@ -88,6 +88,50 @@ Physical layout: 3×3 grid of 9-trit processing elements.
 
 *Note: Simplified architecture eliminates 405 ring resonator filters from output stage.*
 
+### Supported operations
+
+| Operation | Mixer Type | Physics | Output Formula |
+|-----------|------------|---------|----------------|
+| **Addition** | SFG | χ² sum-frequency | λ_out = 1/(1/λ₁ + 1/λ₂) |
+| **Subtraction** | DFG | χ² difference-frequency | λ_out = 1/(1/λ₁ - 1/λ₂) |
+| **Multiplication** | Kerr | χ³ four-wave mixing | Balanced ternary product |
+
+**Multiplication truth table:**
+| A | B | A × B |
+|---|---|-------|
+| -1 | -1 | +1 |
+| -1 | 0 | 0 |
+| -1 | +1 | -1 |
+| 0 | any | 0 |
+| +1 | -1 | -1 |
+| +1 | 0 | 0 |
+| +1 | +1 | +1 |
+
+### Carry chain (electronic)
+
+Multi-trit arithmetic uses electronic carry propagation via dedicated GPIO signals:
+
+| Signal | Function | Direction |
+|--------|----------|-----------|
+| CARRY_OUT_POS | Carry (+1) from DET_+2 | Output |
+| CARRY_OUT_NEG | Borrow (-1) from DET_-2 | Output |
+| CARRY_IN | Carry/borrow from previous trit | Input |
+
+**Firmware algorithm:**
+1. Read all photodetector outputs simultaneously
+2. For each trit N (LSB to MSB): add carry from trit N-1
+3. Result = (A[N] + B[N] + carry_in) mod 3
+4. Generate new carry for trit N+1
+
+### Selector options
+
+| Type | Component | Pros | Cons |
+|------|-----------|------|------|
+| **Ring resonator** (default) | wavelength_selector() | Compact, wavelength-specific | Sensitive to fab variations |
+| **MZI switch** | wavelength_selector_mzi() | Better extinction, tolerant | Larger footprint |
+
+MZI switches use thermo-optic phase control via heater electrodes (GDS layer 10).
+
 ---
 
 ## Design specifications
@@ -103,14 +147,17 @@ Physical layout: 3×3 grid of 9-trit processing elements.
 | Coupling gap | 0.15 μm | Ring-to-bus coupling (simulation verified) |
 | Mixer width | 0.8 μm | Wider for phase matching |
 
-### Nonlinear mixer
+### Nonlinear mixers
 
-| Parameter | Value |
-|-----------|-------|
-| Mixer length | 20-30 μm |
-| Mixer width | 0.8 μm |
-| χ² material | LiNbO3 (d33 ≈ 30 pm/V) |
-| Alternative | Poled DR1-SU8 (15% efficiency) |
+| Mixer | Length | Width | Material | GDS Layer |
+|-------|--------|-------|----------|-----------|
+| SFG (addition) | 20 μm | 0.8 μm | LiNbO3 χ² | (2, 0) |
+| DFG (subtraction) | 25 μm | 0.8 μm | LiNbO3 χ² | (4, 0) |
+| Kerr (multiplication) | 30 μm | 0.8 μm | LiNbO3 χ³ | (7, 0) |
+
+**Material options:**
+- Primary: LiNbO3 (d33 ≈ 30 pm/V for χ², n2 for χ³)
+- Alternative: Poled DR1-SU8 (15% efficiency)
 
 ### Die size estimate
 
@@ -129,11 +176,13 @@ Physical layout: 3×3 grid of 9-trit processing elements.
 | GDS layer | Purpose |
 |-----------|---------|
 | (1, 0) | Waveguide core |
-| (2, 0) | SFG mixer region (χ² material) |
+| (2, 0) | SFG mixer region (χ² addition) |
 | (3, 0) | Photodetector region |
-| (4, 0) | DFG divider region |
-| (5, 0) | Kerr nonlinear region |
+| (4, 0) | DFG mixer region (χ² subtraction) |
+| (5, 0) | Kerr resonator region |
 | (6, 0) | AWG body |
+| (7, 0) | MUL mixer region (χ³ multiplication) |
+| (10, 0) | MZI heater/electrode |
 | (100, 0) | Labels (toggle in KLayout) |
 
 ---
@@ -249,11 +298,20 @@ The optical frontend (Kerr clock, Y-junction, splitter trees) is positioned at t
 
 ## Files included
 
+### GDS layouts
+
+| File | Operation | Selectors | Description |
+|------|-----------|-----------|-------------|
+| `ternary_81trit_simplified.gds` | ADD | Ring | **RECOMMENDED** - Simplified AWG output |
+| `ternary_81trit_add_mzi.gds` | ADD | MZI | MZI switches (larger, more tolerant) |
+| `ternary_81trit_sub.gds` | SUB | Ring | Subtraction (DFG mixer) |
+| `ternary_81trit_mul.gds` | MUL | Ring | Multiplication (Kerr mixer) |
+| `ternary_81trit_5det_complete.gds` | ADD | Ring | Ring filter output (more precise) |
+
+### Documentation
+
 | File | Description |
 |------|-------------|
-| `ternary_81trit_simplified.gds` | **RECOMMENDED** - Simplified architecture (AWG output) |
-| `ternary_81trit_5det_complete.gds` | Full architecture (ring filter output) |
-| `ternary_complete_alu.gds` | Single ALU reference design |
 | `METHODS.md` | Simulation methodology |
 | `../Research/data/SIMULATION_RESULTS.md` | Material characterization data |
 
