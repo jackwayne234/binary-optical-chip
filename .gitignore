@@ -81,3 +81,10 @@ logs/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Local working files
+ebay_*.html
+parse_ebay.py
+Photonic Controls/
+reddit projects/
+CLAUDE.md
