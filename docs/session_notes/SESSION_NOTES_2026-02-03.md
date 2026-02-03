@@ -984,6 +984,27 @@ Storage → IOA-STOR → SIOC-STOR → Data Bus → Supercomputers
 
 ---
 
+### Chip Generator Menu Reorganized
+
+**New menu structure:**
+
+```
+[1] INTEGRATED SUPERCOMPUTER (Validation Design) ← START HERE
+    - 9×9, 27×27, or 81×81 array options
+    - Kerr at center, Super IOC integrated
+    - Realistic, testable
+
+[2] CRAZYTOWN 🎢
+    - All the ambitious designs
+    - Standard Computer, Home AI, Supercomputer
+    - Individual modules (IOC, IOA, etc.)
+    - Fun to explore, needs validation first
+```
+
+This keeps the focus on the realistic validation work while preserving access to the exploratory designs.
+
+---
+
 ### Published Paper Context
 
 **Paper:** "Wavelength-Division Ternary Logic: Bypassing the Radix Economy Penalty in Optical Computing"

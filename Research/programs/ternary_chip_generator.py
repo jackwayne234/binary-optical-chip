@@ -3397,54 +3397,100 @@ def generate_81_trit_optical_carry(
 def interactive_generator():
     """
     Interactive CLI for generating chips.
-    Three-tier system: Standard Computer, Home AI, Supercomputer.
+    Option 1: Realistic validation design
+    Option 2: CRAZYTOWN - all the ambitious exploratory designs
     """
     print("\n" + "="*70)
     print("  WAVELENGTH-DIVISION TERNARY OPTICAL COMPUTER")
-    print("  Chip Generator v2.0 - WDM Parallel Architecture")
+    print("  Chip Generator v3.0")
     print("="*70)
 
     print("\n" + "="*70)
-    print("  COMPLETE SYSTEMS (Choose Your Tier)")
+    print("  MAIN MENU")
     print("="*70)
-    print("\n  [1] STANDARD COMPUTER")
-    print("      - 81-trit Universal ALU (ADD/SUB/MUL/DIV)")
-    print("      - IOC + Backplane")
-    print("      - ~3.2 TFLOPS equivalent")
-    print("      - Use case: General ternary computing, research")
 
-    print("\n  [2] HOME AI")
-    print("      - 243x243 Systolic Array (59,049 PEs)")
-    print("      - 8 WDM channels (C-band)")
-    print("      - Super IOC (streaming, no RAM)")
-    print("      - ~291 TFLOPS")
-    print("      - Use case: Edge inference, local LLMs, prosumer AI")
+    print("\n  [1] INTEGRATED SUPERCOMPUTER (Validation Design) ← START HERE")
+    print("      - 9×9 array (80 PEs + central Kerr clock)")
+    print("      - Kerr at EXACT CENTER for equal clock distribution")
+    print("      - Super IOC integrated on chip edge")
+    print("      - Realistic, testable, simulatable")
+    print("      - Goal: Validate before scaling")
 
-    print("\n  [3] SUPERCOMPUTER")
-    print("      - 8-Chip Circular Backplane ('Round Table')")
-    print("      - 243x243 x 8 chips x 8 WDM = 3.78M compute units")
-    print("      - Central Kerr clock (617 MHz)")
-    print("      - ~2.3 PFLOPS (beats NVIDIA H100!)")
-    print("      - Use case: Datacenter AI, training, HPC")
+    print("\n  [2] CRAZYTOWN 🎢")
+    print("      - All the ambitious designs we explored")
+    print("      - 8-chip Round Table, 2.33 PFLOPS claims, etc.")
+    print("      - Fun to look at, needs validation first")
 
     print("\n" + "="*70)
-    print("  INDIVIDUAL MODULES (For Custom Builds)")
-    print("="*70)
-    print("  [4] IOC Module (Input/Output Converter)")
-    print("  [5] Super IOC (WDM Streaming I/O)")
-    print("  [6] IOA System (Electronic/Network/Sensor Adapters)")
-    print("  [7] Storage IOA (NVMe + DDR5 + HBM)")
-    print("  [8] OPU Controller (The Brain)")
-    print("  [9] Optical Backplane (Central Clock Architecture)")
-    print(" [10] WDM Systolic Array (Configurable Size)")
-
-    print("\n" + "="*70)
-    choice = input("Select option (1-10): ").strip()
+    choice = input("Select option (1-2): ").strip()
 
     # ===========================================
-    # TIER 1: STANDARD COMPUTER
+    # OPTION 1: INTEGRATED SUPERCOMPUTER (Validation)
     # ===========================================
     if choice == "1":
+        print("\n" + "="*70)
+        print("  INTEGRATED SUPERCOMPUTER - Validation Design")
+        print("="*70)
+        print("\n  This is the realistic starting point.")
+        print("  Get this working in simulation, then scale up.")
+        print("\n  Array sizes:")
+        print("    [A] 9×9   (80 PEs)   - Quick simulation")
+        print("    [B] 27×27 (728 PEs)  - Medium test")
+        print("    [C] 81×81 (6560 PEs) - Full scale")
+
+        size_choice = input("\n  Select size (A/B/C) [A]: ").strip().upper() or "A"
+
+        if size_choice == "B":
+            array_size = 27
+        elif size_choice == "C":
+            array_size = 81
+        else:
+            array_size = 9
+
+        print(f"\n  Generating {array_size}×{array_size} integrated supercomputer...")
+
+        from integrated_supercomputer import integrated_supercomputer
+        chip = integrated_supercomputer(array_size=array_size)
+        chip_name = f"integrated_supercomputer_{array_size}x{array_size}"
+
+    # ===========================================
+    # OPTION 2: CRAZYTOWN
+    # ===========================================
+    elif choice == "c2":
+        print("\n" + "="*70)
+        print("  🎢 WELCOME TO CRAZYTOWN 🎢")
+        print("  (All the ambitious designs we explored)")
+        print("="*70)
+
+        print("\n  COMPLETE SYSTEMS:")
+        print("    [1] Standard Computer (~3.2 TFLOPS)")
+        print("    [2] Home AI (~291 TFLOPS)")
+        print("    [3] Supercomputer - Round Table (~2.33 PFLOPS)")
+
+        print("\n  INDIVIDUAL MODULES:")
+        print("    [4] IOC Module (Input/Output Converter)")
+        print("    [5] Super IOC (WDM Streaming I/O)")
+        print("    [6] IOA System (Electronic/Network/Sensor)")
+        print("    [7] Storage IOA (NVMe + DDR5 + HBM)")
+        print("    [8] OPU Controller (The Brain)")
+        print("    [9] Optical Backplane (Central Clock)")
+        print("   [10] WDM Systolic Array (Configurable)")
+
+        print("\n" + "="*70)
+        crazy_choice = input("  Select CRAZYTOWN option (1-10): ").strip()
+
+        # Prefix with 'c' to distinguish from main menu
+        choice = "c" + crazy_choice
+
+    else:
+        # Invalid main menu choice
+        print("Invalid option. Please select 1 or 2.")
+        return
+
+    # ===========================================
+    # CRAZYTOWN: TIER 1: STANDARD COMPUTER
+    # ===========================================
+    if choice == "c1":
         print("\n" + "="*70)
         print("  TIER 1: STANDARD COMPUTER")
         print("  General-Purpose Ternary Computing")
@@ -3474,7 +3520,7 @@ def interactive_generator():
     # ===========================================
     # TIER 2: HOME AI
     # ===========================================
-    elif choice == "2":
+    elif choice == "c2":
         print("\n" + "="*70)
         print("  TIER 2: HOME AI")
         print("  Edge Inference & Local LLMs")
@@ -3509,7 +3555,7 @@ def interactive_generator():
     # ===========================================
     # TIER 3: SUPERCOMPUTER (Round Table Architecture)
     # ===========================================
-    elif choice == "3":
+    elif choice == "c3":
         print("\n" + "="*70)
         print("  TIER 3: SUPERCOMPUTER")
         print("  Round Table Architecture - Datacenter AI & HPC")
@@ -3871,7 +3917,7 @@ def interactive_generator():
     # ===========================================
     # INDIVIDUAL MODULES
     # ===========================================
-    elif choice == "4":
+    elif choice == "c4":
         print("\n" + "="*60)
         print("  IOC Module - Input/Output Converter")
         print("="*60)
@@ -3882,7 +3928,7 @@ def interactive_generator():
         chip = ioc_module_complete(include_laser_sources=include_lasers)
         chip_name = "ioc_module"
 
-    elif choice == "5":
+    elif choice == "c5":
         print("\n" + "="*60)
         print("  Super IOC - WDM Streaming I/O")
         print("="*60)
@@ -3901,7 +3947,7 @@ def interactive_generator():
             print("Run c_band_wdm_systolic.py first.")
             return
 
-    elif choice == "6":
+    elif choice == "c6":
         print("\n" + "="*60)
         print("  IOA System - All Adapters")
         print("="*60)
@@ -3912,7 +3958,7 @@ def interactive_generator():
         chip = ioa_system_complete()
         chip_name = "ioa_system_complete"
 
-    elif choice == "7":
+    elif choice == "c7":
         print("\n" + "="*60)
         print("  Storage IOA")
         print("="*60)
@@ -3923,7 +3969,7 @@ def interactive_generator():
         chip = storage_ioa()
         chip_name = "storage_ioa"
 
-    elif choice == "8":
+    elif choice == "c8":
         print("\n" + "="*60)
         print("  OPU Controller - The Brain")
         print("="*60)
@@ -3934,7 +3980,7 @@ def interactive_generator():
         chip = opu_controller()
         chip_name = "opu_controller"
 
-    elif choice == "9":
+    elif choice == "c9":
         print("\n" + "="*60)
         print("  Optical Backplane - Central Clock Architecture")
         print("="*60)
@@ -3949,7 +3995,7 @@ def interactive_generator():
         chip = backplane_central_clock(n_opu_slots=int(opu), n_ioc_slots=int(ioc), n_ioa_slots=int(ioa))
         chip_name = f"backplane_central_clock_{opu}opu_{ioc}ioc_{ioa}ioa"
 
-    elif choice == "10":
+    elif choice == "c10":
         print("\n" + "="*60)
         print("  WDM Systolic Array - Configurable")
         print("="*60)
