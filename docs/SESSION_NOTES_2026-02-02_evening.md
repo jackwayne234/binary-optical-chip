@@ -10,6 +10,7 @@ The 81-trit ternary optical computer is now **fully functional** with:
 - ✅ Fully optical carry chain (1.62 ns propagation @ 20ps/trit)
 - ✅ No firmware math required
 - ✅ **All 5 implementation tasks COMPLETE**
+- ✅ **Tiered Optical RAM architecture designed and implemented**
 
 ### Key Files From This Session
 ```
@@ -20,12 +21,24 @@ Research/programs/carry_chain_timing_sim.py   ← NEW: Timing analysis (20ps val
 Research/programs/mask_layer_generator.py     ← NEW: Fabrication mask extraction
 Research/programs/test_photonic_logic.py      ← Updated: 8 new tests
 Research/programs/power_budget_analysis.py    ← Updated: 20ps delay component
+
+# NEW - Tiered Optical RAM Generators
+Research/programs/ternary_tier1_ram_generator.py  ← "Hot" registers (ACC, TMP, A, B)
+Research/programs/ternary_tier2_ram_generator.py  ← "Working" registers (R0-R15)
+Research/programs/ternary_tier3_ram_generator.py  ← "Parking" registers (P0-P31, bistable)
 ```
 
 ### Generated GDS Files
 ```
-Research/data/gds/ternary_81trit_optical_carry_20ps.gds  (5.5 MB) ← LATEST
+Research/data/gds/ternary_81trit_optical_carry_20ps.gds  (5.5 MB) ← LATEST ALU
 Research/data/gds/alu_with_selectors.gds                 (139 KB)
+
+# Tiered RAM GDS files
+Research/data/gds/tier1_hot_registers.gds       ← 4 registers, 1ns loop, always-on SOA
+Research/data/gds/tier2_working_registers.gds   ← 8 registers, 10ns loop, pulsed SOA
+Research/data/gds/tier3_parking_registers.gds   ← 32 registers, bistable, no refresh
+
+# Fabrication masks
 Research/data/gds/masks/WAVEGUIDE.gds
 Research/data/gds/masks/METAL1_HEATER.gds
 Research/data/gds/masks/METAL2_PAD.gds
@@ -34,6 +47,79 @@ Research/data/gds/masks/DOPING_SA.gds
 Research/data/gds/masks/DOPING_GAIN.gds
 Research/data/gds/masks/process_traveler.md
 ```
+
+---
+
+## NEW: IOC and Tiered Optical RAM Architecture
+
+### System Architecture Discussion
+
+We discussed that a complete computer needs: INPUT → MEMORY ↔ ALU → OUTPUT
+
+Designed an **IOC (Input/Output Converter)** as the bridge between optical and electronic domains:
+- Encode: Electronic ternary → RGB wavelengths (laser modulation)
+- Decode: Photodetectors → Electronic ternary
+- Buffer/Sync: Handle timing between fast optical ALU and slower memory
+
+### Memory Architecture Decision
+
+Split memory into two domains:
+1. **Optical RAM** (working memory) - stays in optical domain, no conversion overhead
+2. **Electronic Storage** - uses I/O buffer for conversion
+
+### Tiered Optical Register Architecture
+
+Designed 3-tier modular register system (like L1/L2/L3 cache):
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  TIER 1: HOT         │  TIER 2: WORKING    │  TIER 3: PARKING  │
+├──────────────────────┼─────────────────────┼───────────────────┤
+│  4 registers         │  8-16 registers     │  32 registers     │
+│  1 ns loop           │  10 ns loop         │  Bistable (∞)     │
+│  Always-on SOA       │  Pulsed SOA         │  No refresh       │
+│  Highest power       │  Moderate power     │  ~0 mW standby    │
+│  ACC, TMP, A, B      │  R0-R15             │  P0-P31           │
+│  Inline with ALU     │  General purpose    │  Constants/spill  │
+│  Speed: ★★★★★        │  Speed: ★★★☆☆       │  Speed: ★★☆☆☆     │
+│  Power: ★☆☆☆☆        │  Power: ★★★☆☆       │  Power: ★★★★★     │
+└──────────────────────┴─────────────────────┴───────────────────┘
+```
+
+### Tier Implementation Details
+
+**Tier 1 - Hot Registers:**
+- Recirculating delay loop (~1ns, ~200um)
+- Continuous SOA amplification
+- Directional couplers for write/read
+- MZI switches for register selection
+
+**Tier 2 - Working Registers:**
+- Serpentine delay (~10ns)
+- Pulsed SOA with gate control (power efficient)
+- Tunable couplers with heaters
+- Full MUX/DEMUX addressing
+
+**Tier 3 - Parking Registers:**
+- Bistable flip-flops using saturable absorber + gain medium
+- No refresh needed (holds indefinitely)
+- 81 trits per register in 9x9 grid
+- Total capacity: 2592 trits (32 reg × 81 trits)
+
+### Modular Design Benefits
+
+- Users choose complexity based on application
+- Cost scaling - minimal for prototypes, full for production
+- Power profiles - IoT uses Tier 3, HPC uses Tier 1
+- Upgradable - start simple, add tiers later
+- Research flexibility - test tiers independently
+
+### Next Steps (for continuation)
+
+1. Design the IOC (Input/Output Converter) module
+2. Connect tiered RAM to ALU
+3. Design control unit / instruction format
+4. Consider optical vs electronic memory boundary
 
 ### Git Commit
 - `0df06b4` - Complete 5 implementation tasks: FDTD simulation, SA optimization, wavelength selectors, timing analysis, mask generation
