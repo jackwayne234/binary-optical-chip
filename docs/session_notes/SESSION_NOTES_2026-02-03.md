@@ -918,6 +918,21 @@ Storage → IOA-STOR → SIOC-STOR → Data Bus → Supercomputers
 
 **Open question:** Should SIOC-STOR connect via data bus (current) or direct waveguides to each SC?
 
+---
+
+### Published Paper Context
+
+**Paper:** "Wavelength-Division Ternary Logic: Bypassing the Radix Economy Penalty in Optical Computing"
+**Author:** Christopher Riner
+**Published:** January 31, 2026
+**DOI:** 10.5281/zenodo.18437600
+
+**Core thesis:** Use wavelengths instead of voltage levels to implement ternary computing, avoiding the ~40× transistor overhead of electronic ternary.
+
+**This architecture work extends the paper** - the paper is "why this could work," the current GDS/simulation work is "how to build it."
+
+**Important context:** This is a hobby project. The author is exploring for fun, not under publication pressure. Best innovations often come from this mindset.
+
 Always update the current day's session notes with:
 - What was accomplished
 - Files modified
