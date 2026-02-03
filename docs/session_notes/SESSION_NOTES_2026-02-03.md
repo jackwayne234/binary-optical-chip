@@ -815,11 +815,74 @@ ioa_ring_radius = 4500 μm (IOAs)
 
 ---
 
-## ═══════════════════════════════════════════════════════════════════
-## INSTRUCTIONS FOR FUTURE SESSIONS
-## ═══════════════════════════════════════════════════════════════════
+## ███████████████████████████████████████████████████████████████████
+## █                                                                 █
+## █         ★★★ CRITICAL INSTRUCTIONS FOR ALL FUTURE SESSIONS ★★★   █
+## █                                                                 █
+## ███████████████████████████████████████████████████████████████████
+##
+##   1. AUTO-LOG SESSION NOTES AT REGULAR INTERVALS
+##   2. AUTO-COMMIT AND PUSH TO GITHUB AT REGULAR INTERVALS
+##
+##   ▶▶▶ DO NOT WAIT FOR USER TO ASK - DO THIS AUTOMATICALLY! ◀◀◀
+##
+## ███████████████████████████████████████████████████████████████████
 
-### Supercomputer Configurations Added
+---
+
+### ★ AUTO-LOG POLICY (MANDATORY) ★
+
+**UPDATE SESSION NOTES AUTOMATICALLY** - Do not wait for user to ask!
+
+**When to log:**
+1. **After every significant task completion** - Log what was done
+2. **After every design decision or clarification** - Document it immediately
+3. **Before switching topics** - Capture current state
+4. **Every 3-5 tool calls on complex tasks** - Quick status update
+5. **When user provides important context** - Record for future sessions
+6. **At natural conversation breakpoints** - Summarize progress
+
+**What to log:**
+- Tasks completed
+- Files modified
+- Design decisions made
+- User clarifications/preferences
+- Commands used
+- Any blockers or issues
+- Architecture discussions
+
+**Session notes location:** `docs/session_notes/SESSION_NOTES_YYYY-MM-DD.md`
+
+---
+
+### ★ AUTO-COMMIT POLICY (MANDATORY) ★
+
+**COMMIT AND PUSH TO GITHUB AUTOMATICALLY** - Do not wait for user to ask!
+
+**When to commit:**
+1. After completing any significant task or feature
+2. Before switching to a different area of work
+3. When the user requests a commit
+4. At natural breakpoints in the conversation
+5. After updating session notes with significant content
+
+**Commit Command Pattern:**
+```bash
+cd /home/jackwayne/Desktop/Optical_computing
+git add [specific files]
+git commit -m "Description of changes
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+git push
+```
+
+**IMPORTANT:** Always update session notes BEFORE committing!
+
+---
+
+### Recent Updates Logged
+
+**Supercomputer Configurations Added:**
 
 Updated Option 3 (Supercomputer) to offer two configurations:
 
@@ -837,30 +900,23 @@ Updated Option 3 (Supercomputer) to offer two configurations:
 
 ---
 
-### Auto-Commit Policy
+### Tensor Core / Storage Discussion
 
-**IMPORTANT**: Commit and push changes to GitHub at regular intervals:
+**Key insight discussed:** Tensor cores do NOT connect directly to storage.
 
-1. After completing any significant task or feature
-2. Before switching to a different area of work
-3. When the user requests a commit
-4. At natural breakpoints in the conversation
-
-**Commit Command Pattern:**
-```bash
-cd /home/jackwayne/Desktop/Optical_computing
-git add [specific files]
-git commit -m "Description of changes
-
-Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
-git push
+NVIDIA data path:
+```
+NVMe → PCIe → System RAM → PCIe → HBM → Cache → Tensor Cores
+(Many hops, CPU involved)
 ```
 
-**Also update session notes** with what was done before committing.
+Our design (more elegant):
+```
+Storage → IOA-STOR → SIOC-STOR → Data Bus → Supercomputers
+(Fewer hops, streaming architecture)
+```
 
-### Session Notes Location
-
-Session notes are stored in: `docs/session_notes/`
+**Open question:** Should SIOC-STOR connect via data bus (current) or direct waveguides to each SC?
 
 Always update the current day's session notes with:
 - What was accomplished
