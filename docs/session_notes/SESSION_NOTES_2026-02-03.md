@@ -680,4 +680,111 @@ The system now organizes into THREE distinct computer types:
 
 ---
 
+## Session 3 (Continued) - File Reorganization
+
+### What We Did
+
+1. **Clarified Round Table Architecture**
+   - Kerr clock at EXACT center
+   - Supercomputers in Ring 1 (equidistant from Kerr)
+   - Super IOCs in Ring 2 (outside SCs)
+   - IOAs in Ring 3 (outermost, modular peripherals)
+   - CRITICAL: Minimize distance from Kerr to reduce clock skew
+
+2. **Reorganized Project Structure**
+
+   **New Tier-Specific Folders:**
+   ```
+   Research/programs/
+   ├── standard_computer/    # Tier 1: ~4 TFLOPS
+   │   ├── README.md
+   │   └── standard_generator.py
+   ├── home_ai/              # Tier 2: ~291 TFLOPS
+   │   ├── README.md
+   │   └── home_ai_generator.py
+   ├── supercomputer/        # Tier 3: ~2.33 PFLOPS
+   │   ├── README.md
+   │   └── supercomputer_generator.py
+   ├── shared_components/    # Common modules
+   │   └── README.md
+   └── simulations/          # Meep FDTD files (moved here)
+       ├── README.md
+       ├── kerr_resonator_sim.py
+       ├── awg_demux_sim.py
+       ├── mzi_switch_sim.py
+       └── [other *_sim.py files]
+   ```
+
+   **Session Notes Folder:**
+   ```
+   docs/session_notes/       # Moved from docs/
+   ├── SESSION_NOTES_2026-02-02.md
+   ├── SESSION_NOTES_2026-02-02_afternoon.md
+   ├── SESSION_NOTES_2026-02-02_evening.md
+   └── SESSION_NOTES_2026-02-03.md
+   ```
+
+   **GDS Tier Directories:**
+   ```
+   Research/data/gds/
+   ├── standard_computer/
+   │   ├── round_table_minimum.gds
+   │   ├── optical_systolic_81x81.gds
+   │   └── optical_systolic_pe.gds
+   ├── home_ai/
+   │   ├── round_table_small.gds
+   │   └── wdm_*.gds files
+   └── supercomputer/
+       ├── round_table_maximum.gds
+       └── wdm_circular_backplane.gds
+   ```
+
+3. **Generated Round Table GDS Files**
+   - `round_table_minimum.gds` (14 KB) - 1 SC, 1 SIOC, 1 IOA
+   - `round_table_small.gds` (34 KB) - 4 SC, 2 SIOC, 2 IOA
+   - `round_table_maximum.gds` (61 KB) - 8 SC, 8 SIOC, 8 IOA
+
+4. **Updated Documentation**
+   - Root README.md: Added Quick Navigation section
+   - ARCHITECTURE_NOTES.md: Added Round Table architecture emphasis
+   - Created README.md for each tier folder
+
+### Git Commit
+
+```
+5cad84d Reorganize project structure: 3 computer tiers + Round Table architecture
+```
+
+25 files changed:
+- 9 simulation files moved to `simulations/`
+- 4 session notes moved to `session_notes/`
+- 6 new tier README/generator files
+- 3 modified files
+
+### Commands Reference (Updated Paths)
+
+```bash
+cd /home/jackwayne/Desktop/Optical_computing
+
+# Generate Round Table backplanes
+SSL_CERT_DIR=/etc/ssl/certs .mamba_env/bin/python3 Research/programs/optical_backplane.py
+
+# Generate Standard Computer
+.mamba_env/bin/python3 Research/programs/standard_computer/standard_generator.py
+
+# Generate Home AI
+.mamba_env/bin/python3 Research/programs/home_ai/home_ai_generator.py
+
+# Generate Supercomputer
+.mamba_env/bin/python3 Research/programs/supercomputer/supercomputer_generator.py
+
+# Run simulations (new path)
+.mamba_env/bin/python3 Research/programs/simulations/kerr_resonator_sim.py --time-domain
+
+# View Round Table in KLayout
+klayout Research/data/gds/supercomputer/round_table_maximum.gds
+```
+
+---
+
 *Session with Claude Code - Opus 4.5*
