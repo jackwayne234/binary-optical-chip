@@ -234,6 +234,44 @@ The whole reason AI is stuck in datacenters is power/heat. Remove that constrain
 
 ---
 
+## Getting the Word Out - Visibility Ideas
+
+### Academic/Research
+- Zenodo v2 paper with new validation data
+- Submit to arXiv (free, instant, gets cited)
+- Email photonics/optical computing researchers directly
+- Present at a conference (SPIE Photonics, OFC)
+
+### Tech Community
+- Hacker News post (this crowd loves novel hardware)
+- Reddit: r/hardware, r/photonics, r/chipdesign
+- Twitter/X thread with simple explainer + link to paper
+- Blog post on Medium or personal site
+- YouTube explainer video (even simple whiteboard style)
+
+### Industry Outreach
+- AWS buddy - internal Slack, intro to silicon team (Graviton/Trainium folks)
+- Cold email Intel/AMD/NVIDIA photonics divisions
+- Reach out to photonics startups (Lightmatter, Luminous, Ayar Labs)
+- LinkedIn posts (boomers but it works)
+
+### Crowdfunding/Community
+- Kickstarter for prototype chip fabrication
+- Open source community building (Discord server?)
+- Partner with a university lab for credibility
+
+### Guerrilla Marketing
+- YouTube demo: side-by-side benchmark vs top GPU
+- Bring working prototype to Maker Faire
+- Cold DM tech journalists who cover semiconductors
+
+### Resources to Leverage
+- Wife: help prioritize, reality-check messaging
+- AWS buddy: industry intros, maybe internal visibility
+- Open source community: GitHub stars attract attention
+
+---
+
 ## Personal Context Captured
 
 ### Christopher's Cognitive Profile
