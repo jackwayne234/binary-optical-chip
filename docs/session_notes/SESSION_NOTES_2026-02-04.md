@@ -95,6 +95,38 @@ This isn't theoretical - it's happening NOW:
 
 ---
 
+## Security Implications: Passive Logic = Reduced Attack Surface
+
+**Key insight:** Since the logic is done passively by the physical path (not programmed), several traditional attack vectors are eliminated.
+
+### Attack Surfaces ELIMINATED by Passive Optical Logic:
+
+1. **No software on the chip** - The "program" is the physical waveguide layout. You can't inject code into glass.
+
+2. **No firmware to flash** - Nothing to corrupt or update maliciously.
+
+3. **No stored instructions** - The logic IS the geometry. To change what it does, you'd have to physically re-etch the silicon.
+
+4. **Different side-channels** - Photons don't emit EM signatures like switching transistors. Power analysis looks completely different. Timing attacks harder because light travels at constant speed.
+
+5. **Immutable compute core** - The optical logic is hardware-defined and cannot be modified remotely.
+
+### What Remains Vulnerable:
+- Input/output interfaces (still electronic)
+- Laser sources and detectors (electronic control)
+- Binary↔ternary conversion layer
+- Host system the chip connects to
+
+### Security Applications:
+- **Cryptographic acceleration** - Logic can't be subverted
+- **Secure enclaves** - Hardware-guaranteed behavior
+- **Military/aerospace** - Physical modification required to alter function
+- **Financial systems** - Tamper-evident by design
+
+**Bottom line:** "The logic physically cannot be modified" is a strong security story for high-assurance applications.
+
+---
+
 ## Wavelength Triplet Stacking Research
 
 ### The Collision Problem
