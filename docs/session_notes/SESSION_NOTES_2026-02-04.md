@@ -19,9 +19,14 @@ Major session focus: validating clock distribution on 27×27 array while explori
 
 ### Key Technical Discoveries This Session
 
-#### 1. Binary↔Ternary Conversion Latency: NEGLIGIBLE
-- **6.5 ns roundtrip** for conversion
+#### 1. Binary↔Ternary Conversion Latency: NEGLIGIBLE (This is GOOD!)
+- **6.5 ns roundtrip** for conversion (6.5 billionths of a second)
+- Binary → Ternary: ~3ns
+- Ternary → Binary: ~3.5ns
+- For context: one memory access is 15-20ns, PCIe transaction is 100-200ns
+- **The conversion overhead is buried in the noise**
 - This effectively eliminates the "conversion overhead" argument against ternary
+- One of the big question marks was "what's the conversion penalty?" Answer: practically nothing ✓
 - Simulation: `Research/programs/integration/pcie_optical_buffer_sim.py`
 
 #### 2. NVIDIA Comparison - The Real Target
