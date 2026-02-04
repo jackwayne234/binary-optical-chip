@@ -200,7 +200,46 @@ docs/session_notes/SESSION_NOTES_2026-02-04.md  # This file
 
 ## Simulations Completed
 - PCIe optical buffer binary↔ternary conversion: 6.5ns roundtrip ✓
+- **Clock distribution 27×27: PASSED** ✓
 
 ## Simulations In Progress
-- Clock distribution 27×27 on BIGDAWG (~86% complete)
 - Wavelength triplet stacking search (exhaustive)
+
+---
+
+## MAJOR MILESTONE: Clock Skew Validation PASSED
+
+**27×27 Array Clock Distribution Results:**
+```
+Array size: 27×27 (729 PEs)
+Wavelength: 1.55 μm (C-band)
+Clock skew: 39.3 femtoseconds
+Skew as % of period: 2.424%
+Threshold: 5%
+Status: PASS ✅
+```
+
+**What this means:**
+- The central Kerr clock CAN reach all 729 PEs with acceptable timing
+- 39 femtoseconds of skew is incredibly tight (light travels ~12μm in that time)
+- The architecture scales to at least 27×27
+- Green light to proceed to 81×81 validation
+
+**Simulation details:**
+- Platform: BIGDAWG (r7i.48xlarge, 192 cores, 1.5TB RAM)
+- Runtime: 31 minutes (1903 seconds)
+- MPI processes: 192
+- Memory used: ~62GB
+
+**Output files:**
+```
+Research/data/csv/clock_distribution_27x27.csv   # Full PE timing data
+Research/data/csv/clock_distribution_27x27.png   # Visualization
+Research/data/csv/clock_traces_27x27.png         # Waveform traces
+Research/data/csv/clock_skew_summary_27x27.txt   # Summary
+```
+
+**Propagation analysis:**
+- Propagation speed: 22.6 μm per Meep time unit
+- Linear fit: delay = 0.044 × distance - 6.1
+- Distance-dependent delay is predictable and compensatable
