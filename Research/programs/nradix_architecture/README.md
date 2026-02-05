@@ -1,6 +1,6 @@
-# TPU Architecture - AI Accelerator Path
+# N-Radix Architecture - AI Accelerator Path
 
-This directory contains the optical tensor processing unit (TPU) implementation - optimized for AI/ML workloads using systolic array architecture.
+This directory contains the N-Radix optical accelerator implementation - optimized for AI/ML workloads using systolic array architecture.
 
 ## Core Concept
 
@@ -171,7 +171,7 @@ The pattern: operations get "easier" at each level (harder ops become add/sub), 
 
 ### Baseline Configuration (Current Architecture)
 
-In the standard TPU architecture, we have two types of Processing Elements:
+In the standard N-Radix architecture, we have two types of Processing Elements:
 
 | PE Type | Operating Level | What it does | Physical operation |
 |---------|-----------------|--------------|-------------------|
@@ -367,7 +367,7 @@ Here's what tower scaling makes possible. Consider a **27×27 chip** (~729 PEs):
 
 The optical hardware doesn't know it's small - it's just adding wavelengths. The IOC decides whether each operation means "trit + trit" or "tower + tower." Validating how high the IOC can climb is the key engineering challenge.
 
-> **Note on Frontier comparisons:** You may see references elsewhere comparing optical chips to Frontier (1,200 PFLOPS). Frontier is a general-purpose scientific supercomputer at Oak Ridge National Lab - not an AI accelerator. While the raw FLOPS comparison is dramatic (a few chips matching an exascale supercomputer), it's misleading for AI workloads. The relevant comparison for TPU/AI accelerator work is against NVIDIA's B200/H100, which are purpose-built for the same tensor operations we target.
+> **Note on Frontier comparisons:** You may see references elsewhere comparing optical chips to Frontier (1,200 PFLOPS). Frontier is a general-purpose scientific supercomputer at Oak Ridge National Lab - not an AI accelerator. While the raw FLOPS comparison is dramatic (a few chips matching an exascale supercomputer), it's misleading for AI workloads. The relevant comparison for N-Radix/AI accelerator work is against NVIDIA's B200/H100, which are purpose-built for the same tensor operations we target.
 
 ### Finding the Optimal Tower Height: Bottleneck Engineering
 
@@ -422,7 +422,7 @@ The limit isn't the optical compute - it's how high we can push the tower before
 
 ## vs General-Purpose Path
 
-The `standard_computer/` directory contains the von Neumann architecture path (fetch-decode-execute, branching, etc.). This TPU path trades flexibility for raw throughput on tensor operations.
+The `standard_computer/` directory contains the von Neumann architecture path (fetch-decode-execute, branching, etc.). This N-Radix path trades flexibility for raw throughput on tensor operations.
 
-**Use TPU path for:** Training, inference, any matrix-heavy workload
+**Use N-Radix path for:** Training, inference, any matrix-heavy workload
 **Use CPU path for:** Control flow, I/O handling, general compute

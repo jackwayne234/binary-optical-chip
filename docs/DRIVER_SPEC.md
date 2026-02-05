@@ -1,4 +1,4 @@
-# Optical TPU Driver Specification
+# N-Radix Driver Specification
 
 **Version:** 1.0
 **Date:** February 5, 2026
@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-This document specifies the software driver interface for the Wavelength-Division Ternary Optical TPU. The driver's job is to bridge standard binary computing (PCIe/host) with the optical ternary chip via the IOC (Input/Output Converter).
+This document specifies the software driver interface for the Wavelength-Division Ternary N-Radix accelerator. The driver's job is to bridge standard binary computing (PCIe/host) with the optical ternary chip via the IOC (Input/Output Converter).
 
 **The simple version:** Binary data goes in, gets converted to optical ternary, the chip does matrix math at light speed, results come back as binary.
 
@@ -43,7 +43,7 @@ This document specifies the software driver interface for the Wavelength-Divisio
                                                   │
                                                   ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                      OPTICAL TPU CHIP                                │
+│                      N-RADIX OPTICAL CHIP                            │
 │                                                                      │
 │    Systolic array of Processing Elements (PEs)                      │
 │    All PEs do add/subtract on optical signals                       │
@@ -423,8 +423,8 @@ int ternary_to_float_matrix(void *src, float *dst, int w, int h);
 
 | File | Description |
 |------|-------------|
-| `Research/programs/tpu_architecture/README.md` | Full architecture documentation |
-| `Research/programs/tpu_architecture/ioc_tower_test.py` | IOC encoding test code |
+| `Research/programs/nradix_architecture/README.md` | Full architecture documentation |
+| `Research/programs/nradix_architecture/ioc_tower_test.py` | IOC encoding test code |
 | `Research/programs/shared/ioc_module.py` | IOC module design |
 | `docs/analytical_scaling_results.md` | Performance projections |
 

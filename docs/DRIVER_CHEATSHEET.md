@@ -110,5 +110,5 @@ IOC_RESET         0x0F   // Reset
 ## That's It
 
 Full spec: `docs/DRIVER_SPEC.md`
-Architecture: `Research/programs/tpu_architecture/README.md`
+Architecture: `Research/programs/nradix_architecture/README.md`
 Questions: chrisriner45@gmail.com

@@ -1,4 +1,4 @@
-# Wavelength-Division Ternary Optical TPU
+# N-Radix: Wavelength-Division Ternary Optical Accelerator
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18437600.svg)](https://doi.org/10.5281/zenodo.18437600)
 [![License: Code - MIT](https://img.shields.io/badge/License-Code%20MIT-blue.svg)](LICENSE)
@@ -8,7 +8,7 @@
 [![Open Source](https://img.shields.io/badge/Open%20Source-Yes-brightgreen.svg)]()
 [![Contributions Welcome](https://img.shields.io/badge/Contributions-Welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-> **An Optical Tensor Processing Unit for AI Acceleration**
+> **An Optical Accelerator for AI Workloads**
 >
 > Using wavelength-division ternary logic to achieve 33x the performance of NVIDIA's B200 at a fraction of the power.
 
@@ -16,13 +16,13 @@
 
 ## What Is This?
 
-This is a **Ternary Processing Unit (TPU)** - an AI accelerator optimized for parallel matrix operations. Think NVIDIA's tensor cores, but optical. Instead of electrons through transistors, we use photons through waveguides.
+This is **N-Radix** - an optical AI accelerator optimized for parallel matrix operations. Think NVIDIA's tensor cores, but optical. Instead of electrons through transistors, we use photons through waveguides.
 
 | Architecture | Strength | Use Case |
 |--------------|----------|----------|
 | CPU | Sequential logic, branching | General computing |
 | GPU/TPU | Parallel matrix math | AI training/inference |
-| **Optical TPU** | Parallel matrix math, passive logic | AI acceleration at 50-100x efficiency |
+| **N-Radix** | Parallel matrix math, passive logic | AI acceleration at 50-100x efficiency |
 
 **Why this matters:** AI workloads are dominated by matrix multiplications - exactly what this architecture excels at. The optical approach isn't just more efficient - it's *more powerful*:
 
@@ -107,11 +107,11 @@ The optical approach eliminates the heat and power constraints that limit electr
 
 ---
 
-## TPU Architecture
+## N-Radix Architecture
 
 ### Systolic Array Design
 
-The optical TPU uses a **systolic array** architecture - the same fundamental design as Google's TPUs and NVIDIA's tensor cores. Data flows through a grid of Processing Elements (PEs), with each PE performing multiply-accumulate operations as data passes through.
+N-Radix uses a **systolic array** architecture - the same fundamental design as Google's TPUs and NVIDIA's tensor cores. Data flows through a grid of Processing Elements (PEs), with each PE performing multiply-accumulate operations as data passes through.
 
 ```
         Weight inputs (stationary in PEs)
@@ -161,7 +161,7 @@ Total: 3 clocks = ~4.9ns for 3×3 | ~131ns for 81×81
 
 **During compute:** Weights don't need "reading" - they continuously emit their stored wavelength, mixing with streaming inputs via SFG. Weights are stationary, data flows through. No refresh needed (unlike DRAM).
 
-*Full details: [TPU Architecture README](Research/programs/tpu_architecture/README.md)*
+*Full details: [N-Radix Architecture README](Research/programs/nradix_architecture/README.md)*
 
 ### Wavelength Multiplexing
 
@@ -218,7 +218,7 @@ This isn't experimental - it's **mature telecom technology**. The fiber optic in
 | **Driver Software** | PCIe drivers and software API for host integration | Collaborator onboard |
 | **3^3 Encoding** | Log-domain encoding to make existing hardware 9x faster at crunching bigger numbers | Exploring theory |
 
-### TPU Configurations
+### N-Radix Configurations
 
 | Tier | Name | Performance | Target Use |
 |------|------|-------------|------------|
@@ -261,9 +261,9 @@ Sum-Frequency Generation in nonlinear crystals performs addition optically:
 
 ## Legacy & Alternative Paths
 
-The sections below document earlier prototyping phases and an alternative CPU architecture. The main focus is now the TPU systolic array described above.
+The sections below document earlier prototyping phases and an alternative CPU architecture. The main focus is now the N-Radix systolic array described above.
 
-### Building the TPU: Implementation Phases
+### Building N-Radix: Implementation Phases
 
 #### [Phase 1: Visible Light Prototype](Phase1_Prototype/)
 **Status:** Parts Ordered / Construction In Progress
@@ -335,11 +335,11 @@ python3 Phase2_Fiber_Benchtop/firmware/sfp_tuner.py
 
 ### CPU Architecture
 
-> **Note:** The sections below document an alternative general-purpose CPU approach. The main focus of this project is now the TPU/AI accelerator architecture described above. This CPU work is preserved for reference and potential future exploration.
+> **Note:** The sections below document an alternative general-purpose CPU approach. The main focus of this project is now the N-Radix accelerator architecture described above. This CPU work is preserved for reference and potential future exploration.
 
 #### vs Frontier (General-Purpose Supercomputer)
 
-Frontier is a general-purpose scientific supercomputer optimized for simulations with complex branching and irregular memory access - workloads that would suit a general-purpose optical CPU, not a matrix-focused TPU. We include this comparison here because it's more relevant to CPU-style workloads.
+Frontier is a general-purpose scientific supercomputer optimized for simulations with complex branching and irregular memory access - workloads that would suit a general-purpose optical CPU, not the matrix-focused N-Radix accelerator. We include this comparison here because it's more relevant to CPU-style workloads.
 
 | System | Performance | Power |
 |--------|-------------|-------|
@@ -348,17 +348,17 @@ Frontier is a general-purpose scientific supercomputer optimized for simulations
 
 **15 chips = Frontier at 0.03% of the power**
 
-*However, this comparison is academic - our TPU architecture is optimized for matrix operations (AI workloads), not the diverse scientific simulations Frontier handles. A fair comparison would be our optical TPU vs NVIDIA's AI accelerators (B200/H100), which is covered in the TPU section above.*
+*However, this comparison is academic - N-Radix is optimized for matrix operations (AI workloads), not the diverse scientific simulations Frontier handles. A fair comparison would be N-Radix vs NVIDIA's AI accelerators (B200/H100), which is covered in the Architecture section above.*
 
 #### General-Purpose Optical CPU
 
-While the TPU architecture is optimized for matrix operations, a general-purpose optical CPU would require:
+While N-Radix is optimized for matrix operations, a general-purpose optical CPU would require:
 
-- **Sequential instruction execution** - Not the TPU's strength
+- **Sequential instruction execution** - Not N-Radix's strength
 - **Branch prediction and control flow** - Optical switches are slower than matrix ops
 - **Cache hierarchy** - Optical memory is still an open research problem
 
-The CPU path is preserved here because some applications (embedded systems, specialized controllers) might benefit from ternary logic without needing TPU-scale parallelism.
+The CPU path is preserved here because some applications (embedded systems, specialized controllers) might benefit from ternary logic without needing N-Radix-scale parallelism.
 
 #### The Round Table Topology (Multi-CPU Configuration)
 

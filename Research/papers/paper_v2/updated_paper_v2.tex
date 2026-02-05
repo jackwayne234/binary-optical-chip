@@ -15,7 +15,7 @@
 
 \begin{document}
 
-\title{Wavelength-Division Ternary Optical TPU:\\From Theory to Tensor Processing Architecture}
+\title{N-Radix: A Wavelength-Division Optical Accelerator\\Bypassing the Radix Economy Penalty}
 
 \author{Christopher Riner%
 \thanks{Independent Researcher: Chesapeake, VA, US. Email: chrisriner45@gmail.com}}
@@ -23,18 +23,18 @@
 \maketitle
 
 \begin{abstract}
-We present an optical Tensor Processing Unit (TPU) architecture based on wavelength-division ternary logic. Building on our prior theoretical work demonstrating that wavelength encoding bypasses the radix economy penalty, we now describe a complete systolic array architecture optimized for AI/ML workloads. The design employs a novel log-domain tower scaling mechanism where the Input/Output Converter (IOC) reinterprets base-3 trits as $\text{trit}^3$ (3\textsuperscript{3} encoding), yielding up to 9$\times$ throughput improvement for pure addition workloads while using identical optical hardware. We analyze the practical limits of this scaling approach, showing that while 3\textsuperscript{3} encoding is achievable with standard 64-bit hardware, higher towers (3\textsuperscript{3}\textsuperscript{3}\textsuperscript{3}) would require 12 terabit registers—placing them beyond physical realizability. For real-world matrix multiplication workloads (50\% multiply, 50\% add), the architecture delivers approximately 1.8$\times$ throughput improvement via Amdahl's Law. At 960$\times$960 scale, this yields 148 PFLOPS per chip for matrix multiply—meaning 8 chips could match Frontier's 1,200 PFLOPS, compared to Frontier's 9,402 nodes.
+We present N-Radix, an optical accelerator architecture based on wavelength-division ternary logic. Building on our prior theoretical work demonstrating that wavelength encoding bypasses the radix economy penalty, we now describe a complete systolic array architecture optimized for AI/ML workloads. The design employs a novel log-domain tower scaling mechanism where the Input/Output Converter (IOC) reinterprets base-3 trits as $\text{trit}^3$ (3\textsuperscript{3} encoding), yielding up to 9$\times$ throughput improvement for pure addition workloads while using identical optical hardware. We analyze the practical limits of this scaling approach, showing that while 3\textsuperscript{3} encoding is achievable with standard 64-bit hardware, higher towers (3\textsuperscript{3}\textsuperscript{3}\textsuperscript{3}) would require 12 terabit registers—placing them beyond physical realizability. For real-world matrix multiplication workloads (50\% multiply, 50\% add), the architecture delivers approximately 1.8$\times$ throughput improvement via Amdahl's Law. At 960$\times$960 scale, this yields 148 PFLOPS per chip for matrix multiply—meaning 8 chips could match Frontier's 1,200 PFLOPS, compared to Frontier's 9,402 nodes.
 \end{abstract}
 
 \begin{IEEEkeywords}
-Ternary computing, optical computing, tensor processing unit, systolic array, wavelength division, radix economy, log-domain computing, AI accelerator
+Ternary computing, optical computing, N-Radix, systolic array, wavelength division, radix economy, log-domain computing, AI accelerator
 \end{IEEEkeywords}
 
 \section{Introduction}
 
 In our prior work \cite{riner2026wavelength}, we demonstrated that wavelength-division ternary logic fundamentally bypasses the radix economy penalty that has historically prevented ternary computing from practical realization. While transistor-based ternary requires approximately 40$\times$ more hardware per trit compared to binary bits, wavelength differentiation cost is independent of the number of states.
 
-This paper extends that theoretical foundation into a complete \textbf{Tensor Processing Unit (TPU)} architecture optimized for AI and machine learning workloads. We introduce:
+This paper extends that theoretical foundation into a complete accelerator architecture we call \textbf{N-Radix}---named for its ability to operate at any radix without penalty. The design is optimized for AI and machine learning workloads. We introduce:
 
 \begin{enumerate}
 \item A \textbf{systolic array architecture} where processing elements (PEs) perform optical add/subtract operations on wavelength-encoded trits
@@ -76,11 +76,11 @@ In transistor-based systems, distinguishing $r$ voltage states requires circuitr
 
 where $C_{\text{switch}}$ is approximately \textbf{constant} regardless of radix.
 
-\section{TPU Architecture}
+\section{N-Radix Architecture}
 
 \subsection{Systolic Array Design}
 
-The optical TPU employs a systolic array architecture identical in topology to Google's TPU and NVIDIA's tensor cores. Data flows through a 2D grid of Processing Elements (PEs), with each PE performing multiply-accumulate operations as data passes through.
+N-Radix employs a systolic array architecture identical in topology to Google's TPU and NVIDIA's tensor cores. Data flows through a 2D grid of Processing Elements (PEs), with each PE performing multiply-accumulate operations as data passes through.
 
 \begin{figure}[H]
 \centering
@@ -393,10 +393,10 @@ Both scenarios represent a paradigm shift from ``more transistors = more compute
 
 \section{Conclusion}
 
-We have presented a complete optical TPU architecture that extends wavelength-division ternary logic into a practical AI accelerator design. Key contributions include:
+We have presented the N-Radix architecture, extending wavelength-division ternary logic into a practical AI accelerator design. Key contributions include:
 
 \begin{enumerate}
-\item \textbf{Systolic array architecture}: Identical topology to proven TPU designs, but with optical ternary PEs
+\item \textbf{Systolic array architecture}: Identical topology to proven designs (Google TPU, NVIDIA tensor cores), but with optical ternary PEs
 \item \textbf{Log-domain tower scaling}: 3\textsuperscript{3} encoding yields 9$\times$ throughput for pure ADD operations, $\sim$1.8$\times$ for matrix multiply (via Amdahl's Law on the 50/50 ADD/MUL split)
 \item \textbf{Practical limits identified}: 3\textsuperscript{3}\textsuperscript{3}\textsuperscript{3} requires 12 terabit registers—beyond physical realizability
 \item \textbf{IOC as the true ceiling}: The optical hardware is unlimited; scaling is bounded by electronic interface precision
@@ -414,7 +414,7 @@ Even the conservative matrix multiply numbers represent a transformative improve
 
 \section*{Acknowledgment}
 
-Claude (Anthropic) provided assistance with architectural documentation and performance analysis. The core innovations—wavelength-division ternary encoding, log-domain tower scaling, and TPU architecture—are the work of the author.
+Claude (Anthropic) provided assistance with architectural documentation and performance analysis. The core innovations—wavelength-division ternary encoding, log-domain tower scaling, and N-Radix architecture—are the work of the author.
 
 \begin{thebibliography}{10}
 
