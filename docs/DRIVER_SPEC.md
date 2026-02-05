@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-This document specifies the software driver interface for the Wavelength-Division Ternary N-Radix accelerator. The driver's job is to bridge standard binary computing (PCIe/host) with the optical ternary chip via the IOC (Input/Output Converter).
+This document specifies the software driver interface for the Wavelength-Division Ternary N-Radix accelerator. The driver's job is to bridge standard binary computing (PCIe/host) with the optical ternary chip via the NR-IOC (N-Radix Input/Output Converter).
 
 **The simple version:** Binary data goes in, gets converted to optical ternary, the chip does matrix math at light speed, results come back as binary.
 
@@ -29,7 +29,7 @@ This document specifies the software driver interface for the Wavelength-Divisio
                                                   │
                                                   ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                      IOC (Input/Output Converter)                    │
+│                   NR-IOC (N-Radix Input/Output Converter)            │
 │  ┌──────────────────────────────────────────────────────────────┐   │
 │  │                                                               │   │
 │  │   Binary Input ──▶ [ENCODE 3^3] ──▶ Ternary Optical Signals  │   │
@@ -43,14 +43,14 @@ This document specifies the software driver interface for the Wavelength-Divisio
                                                   │
                                                   ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                      N-RADIX OPTICAL CHIP                            │
+│                       N-RADIX OPTICAL CHIP                          │
 │                                                                      │
 │    Systolic array of Processing Elements (PEs)                      │
 │    All PEs do add/subtract on optical signals                       │
 │    Weights stored in bistable Kerr resonators                       │
 │    Clock: 617 MHz (central Kerr optical clock)                      │
 │                                                                      │
-│    *** DRIVER DOESN'T TOUCH THIS - IT'S ALL PHOTONS ***            │
+│    *** DRIVER DOESN'T TOUCH THIS - IT'S ALL PHOTONS ***             │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -64,15 +64,15 @@ This document specifies the software driver interface for the Wavelength-Divisio
    - Allocate buffers for input matrices (activations)
    - Allocate buffers for weight matrices
    - Allocate buffers for output results
-   - Handle DMA transfers to/from IOC
+   - Handle DMA transfers to/from NR-IOC
 
-2. **Encoding (Host → IOC)**
+2. **Encoding (Host → NR-IOC)**
    - Convert floating-point matrices to balanced ternary
    - Apply 3^3 scaling (each trit represents trit³)
    - Pack trits efficiently for PCIe transfer
 
-3. **Decoding (IOC → Host)**
-   - Receive ternary results from IOC
+3. **Decoding (NR-IOC → Host)**
+   - Receive ternary results from NR-IOC
    - Apply inverse 3^3 scaling
    - Convert back to floating-point
 
@@ -85,7 +85,7 @@ This document specifies the software driver interface for the Wavelength-Divisio
 5. **Synchronization**
    - Wait for weight loading complete
    - Wait for computation complete
-   - Handle interrupts from IOC
+   - Handle interrupts from NR-IOC
 
 ---
 
@@ -137,23 +137,23 @@ def float_to_balanced_ternary(value, num_trits=9):
 
 ### 3^3 Encoding (The Key Part)
 
-The IOC applies **3^3 encoding** - each trit represents **trit³** worth of value.
+The NR-IOC applies **3^3 encoding** - each trit represents **trit³** worth of value.
 
 **Driver responsibility:** The driver does NOT do the 3^3 math. The driver just:
 1. Converts floats to balanced ternary
-2. Sends trits to IOC
-3. IOC handles the 3^3 interpretation internally
+2. Sends trits to NR-IOC
+3. NR-IOC handles the 3^3 interpretation internally
 
-**Why this matters:** The optical hardware operates on trits. The IOC interprets those trits as trit³. The driver just needs to know the input/output value ranges are cubed.
+**Why this matters:** The optical hardware operates on trits. The NR-IOC interprets those trits as trit³. The driver just needs to know the input/output value ranges are cubed.
 
 ```python
 # Example: Sending value 0.5 to an ADD/SUB PE
 #
 # Driver converts: 0.5 → balanced ternary trits
-# Driver sends: trits to IOC
-# IOC interprets: each trit as trit³ (3^3 encoding)
+# Driver sends: trits to NR-IOC
+# NR-IOC interprets: each trit as trit³ (3^3 encoding)
 # Optical chip: does add/subtract on optical signals
-# IOC returns: result trits
+# NR-IOC returns: result trits
 # Driver converts: trits → float (accounting for 3^3 range)
 ```
 
@@ -172,14 +172,14 @@ The IOC applies **3^3 encoding** - each trit represents **trit³** worth of valu
 
 The chip has two types of Processing Elements:
 
-| PE Type | What It Does | IOC Interpretation |
+| PE Type | What It Does | NR-IOC Interpretation |
 |---------|--------------|-------------------|
 | **ADD/SUB** | Optical add/subtract | trit³ = addition value |
 | **MUL/DIV** | Optical add/subtract (in log domain) | trit³ = multiplication value |
 
-**Both use the same 3^3 encoding.** The IOC knows which PE type it's talking to and interprets accordingly.
+**Both use the same 3^3 encoding.** The NR-IOC knows which PE type it's talking to and interprets accordingly.
 
-**Driver responsibility:** Tag each operation with its type (ADD or MUL) so the IOC applies correct interpretation.
+**Driver responsibility:** Tag each operation with its type (ADD or MUL) so the NR-IOC applies correct interpretation.
 
 ---
 
@@ -196,45 +196,45 @@ typedef struct {
     uint32_t width;         // Matrix width
     uint32_t height;        // Matrix height
     uint32_t pe_type;       // 0 = ADD/SUB, 1 = MUL/DIV
-} ioc_command_t;
+} nrioc_command_t;
 ```
 
 ### Commands
 
 | Command | Value | Description |
 |---------|-------|-------------|
-| `IOC_LOAD_WEIGHTS` | 0x01 | Load weight matrix to PE array |
-| `IOC_STREAM_INPUT` | 0x02 | Stream activation matrix through array |
-| `IOC_COMPUTE` | 0x03 | Trigger computation (weights × inputs) |
-| `IOC_READ_OUTPUT` | 0x04 | Read results from output edge |
-| `IOC_RESET` | 0x0F | Reset IOC state |
+| `NR_LOAD_WEIGHTS` | 0x01 | Load weight matrix to PE array |
+| `NR_STREAM_INPUT` | 0x02 | Stream activation matrix through array |
+| `NR_COMPUTE` | 0x03 | Trigger computation (weights × inputs) |
+| `NR_READ_OUTPUT` | 0x04 | Read results from output edge |
+| `NR_RESET` | 0x0F | Reset NR-IOC state |
 
 ### Typical Operation Sequence
 
 ```c
 // 1. Load weights (done once per layer)
-ioc_command_t cmd = {
-    .command = IOC_LOAD_WEIGHTS,
+nrioc_command_t cmd = {
+    .command = NR_LOAD_WEIGHTS,
     .src_addr = weight_buffer,
     .width = 27,
     .height = 27,
     .pe_type = PE_TYPE_MUL  // Weights are for multiplication
 };
-ioc_submit(&cmd);
-ioc_wait_complete();
+nrioc_submit(&cmd);
+nrioc_wait_complete();
 
 // 2. Stream inputs and compute (done per batch)
-cmd.command = IOC_STREAM_INPUT;
+cmd.command = NR_STREAM_INPUT;
 cmd.src_addr = input_buffer;
 cmd.pe_type = PE_TYPE_ADD;  // Accumulation is addition
-ioc_submit(&cmd);
-ioc_wait_complete();
+nrioc_submit(&cmd);
+nrioc_wait_complete();
 
 // 3. Read outputs
-cmd.command = IOC_READ_OUTPUT;
+cmd.command = NR_READ_OUTPUT;
 cmd.dst_addr = output_buffer;
-ioc_submit(&cmd);
-ioc_wait_complete();
+nrioc_submit(&cmd);
+nrioc_wait_complete();
 ```
 
 ---
@@ -244,14 +244,14 @@ ioc_wait_complete();
 | Operation | Time | Notes |
 |-----------|------|-------|
 | PCIe transfer (per KB) | ~1 μs | PCIe Gen4 x16 |
-| IOC encode (per trit) | ~0.5 ns | Part of 6.5ns total |
-| IOC decode (per trit) | ~0.5 ns | Part of 6.5ns total |
-| **IOC total conversion** | **~6.5 ns** | Negligible |
+| NR-IOC encode (per trit) | ~0.5 ns | Part of 6.5ns total |
+| NR-IOC decode (per trit) | ~0.5 ns | Part of 6.5ns total |
+| **NR-IOC total conversion** | **~6.5 ns** | Negligible |
 | Weight load (27×27) | ~4.9 ns | 3 clocks @ 617 MHz |
 | Weight load (81×81) | ~131 ns | 81 clocks @ 617 MHz |
 | Compute (systolic pass) | ~N clocks | N = array dimension |
 
-**Key insight:** The IOC conversion (6.5ns) is negligible. PCIe transfer dominates for small batches. For large batches, compute dominates.
+**Key insight:** The NR-IOC conversion (6.5ns) is negligible. PCIe transfer dominates for small batches. For large batches, compute dominates.
 
 ---
 
@@ -283,23 +283,23 @@ Matrix multiply is 50% multiply operations, 50% add operations.
 
 ## Error Handling
 
-### IOC Status Codes
+### NR-IOC Status Codes
 
 | Status | Value | Meaning |
 |--------|-------|---------|
-| `IOC_OK` | 0x00 | Success |
-| `IOC_BUSY` | 0x01 | Operation in progress |
-| `IOC_ERR_OVERFLOW` | 0x10 | Arithmetic overflow |
-| `IOC_ERR_ALIGNMENT` | 0x11 | Buffer alignment error |
-| `IOC_ERR_SIZE` | 0x12 | Matrix size exceeds array |
-| `IOC_ERR_TIMEOUT` | 0x20 | Operation timeout |
+| `NR_OK` | 0x00 | Success |
+| `NR_BUSY` | 0x01 | Operation in progress |
+| `NR_ERR_OVERFLOW` | 0x10 | Arithmetic overflow |
+| `NR_ERR_ALIGNMENT` | 0x11 | Buffer alignment error |
+| `NR_ERR_SIZE` | 0x12 | Matrix size exceeds array |
+| `NR_ERR_TIMEOUT` | 0x20 | Operation timeout |
 
 ### Overflow Handling
 
-Ternary arithmetic can overflow (e.g., 1 + 1 = 2, which doesn't fit in one trit). The IOC handles carries automatically within the systolic array. The driver should:
+Ternary arithmetic can overflow (e.g., 1 + 1 = 2, which doesn't fit in one trit). The NR-IOC handles carries automatically within the systolic array. The driver should:
 
 1. Normalize inputs to [-1, +1] range
-2. Check for `IOC_ERR_OVERFLOW` on output
+2. Check for `NR_ERR_OVERFLOW` on output
 3. Implement saturation or scaling if overflow occurs
 
 ---
@@ -357,27 +357,27 @@ Memory layout:
 ### Initialization
 
 ```c
-int ioc_init(void);                    // Initialize driver
-int ioc_get_array_size(int *w, int *h); // Get PE array dimensions
-void ioc_shutdown(void);               // Cleanup
+int nrioc_init(void);                    // Initialize driver
+int nrioc_get_array_size(int *w, int *h); // Get PE array dimensions
+void nrioc_shutdown(void);               // Cleanup
 ```
 
 ### Memory
 
 ```c
-void* ioc_alloc(size_t size);          // Allocate IOC-accessible buffer
-void ioc_free(void *ptr);              // Free buffer
-int ioc_memcpy_to(void *dst, void *src, size_t n);   // Host → IOC
-int ioc_memcpy_from(void *dst, void *src, size_t n); // IOC → Host
+void* nrioc_alloc(size_t size);          // Allocate NR-IOC-accessible buffer
+void nrioc_free(void *ptr);              // Free buffer
+int nrioc_memcpy_to(void *dst, void *src, size_t n);   // Host → NR-IOC
+int nrioc_memcpy_from(void *dst, void *src, size_t n); // NR-IOC → Host
 ```
 
 ### Operations
 
 ```c
-int ioc_load_weights(void *weights, int w, int h);
-int ioc_compute(void *input, void *output, int w, int h);
-int ioc_wait(int timeout_ms);
-int ioc_get_status(void);
+int nrioc_load_weights(void *weights, int w, int h);
+int nrioc_compute(void *input, void *output, int w, int h);
+int nrioc_wait(int timeout_ms);
+int nrioc_get_status(void);
 ```
 
 ### Conversion Helpers
@@ -393,17 +393,17 @@ int ternary_to_float_matrix(void *src, float *dst, int w, int h);
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
-│                  IOC DRIVER QUICK REFERENCE                     │
+│                NR-IOC DRIVER QUICK REFERENCE                    │
 ├────────────────────────────────────────────────────────────────┤
 │                                                                 │
 │  TRIT VALUES:  -1 (1550nm)  |  0 (1310nm)  |  +1 (1064nm)     │
 │                                                                 │
 │  ENCODING:     3^3 for both ADD/SUB and MUL/DIV PEs           │
-│                IOC handles interpretation                       │
+│                NR-IOC handles interpretation                    │
 │                                                                 │
 │  PRECISION:    9 trits ≈ 14 bits                               │
 │                                                                 │
-│  TIMING:       IOC conversion: 6.5ns (negligible)              │
+│  TIMING:       NR-IOC conversion: 6.5ns (negligible)           │
 │                Weight load 27×27: ~5ns                         │
 │                Weight load 81×81: ~131ns                       │
 │                                                                 │
@@ -424,8 +424,8 @@ int ternary_to_float_matrix(void *src, float *dst, int w, int h);
 | File | Description |
 |------|-------------|
 | `Research/programs/nradix_architecture/README.md` | Full architecture documentation |
-| `Research/programs/nradix_architecture/ioc_tower_test.py` | IOC encoding test code |
-| `Research/programs/shared/ioc_module.py` | IOC module design |
+| `Research/programs/nradix_architecture/nrioc_tower_test.py` | NR-IOC encoding test code |
+| `Research/programs/shared/nrioc_module.py` | NR-IOC module design |
 | `docs/analytical_scaling_results.md` | Performance projections |
 
 ---

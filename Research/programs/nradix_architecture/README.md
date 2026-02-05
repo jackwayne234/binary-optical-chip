@@ -17,7 +17,7 @@ Unlike the general-purpose CPU path, this architecture is purpose-built for:
 ### Core Systolic Array
 - **`optical_systolic_array.py`** - Base systolic array implementation using ternary optical elements
 - **`c_band_wdm_systolic.py`** - WDM-enhanced version using C-band wavelength channels for parallel lanes
-- **`super_ioc_module.py`** - Super integrated optical compute module (scaled-up IOC)
+- **`super_ioc_module.py`** - Super integrated optical compute module (scaled-up NR-IOC)
 - **`integrated_supercomputer.py`** - Full system integration with memory hierarchy
 
 ### Application-Specific Generators
@@ -191,7 +191,7 @@ To increase compute density, we push each PE type up the tower:
 | **ADD/SUB PE** | 0 (linear) | 3^3 | trit³ |
 | **MUL/DIV PE** | 1 (log) | 3^3 | trit³ (in log domain) |
 
-**Practical decision:** Both PE types use **3^3 encoding**. The IOC interprets them differently based on PE type.
+**Practical decision:** Both PE types use **3^3 encoding**. The NR-IOC interprets them differently based on PE type.
 
 *Theoretical alternative: MUL/DIV could jump to level 4 (3^3^3^3) to stay pure add/subtract on exponents, but 3^3^3^3 is astronomically large and requires arbitrary precision math. The practical choice is 3^3 for both.*
 
@@ -213,7 +213,7 @@ Level 4: Log⁴       - MUL/DIV works again ✓ (but exponent = 3^3^3^3!)
 
 **The problem:** 3^3^3^3 = 3^(3^27) = 3^7,625,597,484,987. That doesn't fit in any standard numeric type. You'd need arbitrary precision math, adding latency and complexity.
 
-**The practical solution:** Both use **3^3 encoding**. The IOC interprets based on PE type:
+**The practical solution:** Both use **3^3 encoding**. The NR-IOC interprets based on PE type:
 - ADD/SUB PEs: trit³ represents addition values
 - MUL/DIV PEs: trit³ represents multiplication values (in log domain)
 
@@ -244,7 +244,7 @@ To represent a number that can hold values up to 3^7,625,597,484,987, you need a
 - **12 TERABIT registers** would be required (12 trillion bits)
 - **1.5 TERABYTES** to store a single number
 - More storage **per multiplication** than most data centers have total
-- The IOC would need to encode/decode numbers larger than atoms in the universe
+- The NR-IOC would need to encode/decode numbers larger than atoms in the universe
 
 This isn't an engineering challenge - it's a fundamental impossibility. You can't build registers with more bits than there are particles to build them with.
 
@@ -317,28 +317,28 @@ This is the beautiful part. After scaling:
 | Optical paths | Unchanged | Unchanged |
 | Clock rate | 617 MHz | 617 MHz (same) |
 | Physical states | 3 | 3 (same) |
-| **IOC** | Interprets trit as trit | Interprets trit as trit³ (or higher) |
+| **NR-IOC** | Interprets trit as trit | Interprets trit as trit³ (or higher) |
 
-The PEs are completely oblivious to the tower level. They just see optical signals and add/subtract them. All the intelligence is in the **IOC (Integrated Optical Converter)**, which:
+The PEs are completely oblivious to the tower level. They just see optical signals and add/subtract them. All the intelligence is in the **NR-IOC (N-Radix Input/Output Converter)**, which:
 
 1. Knows which PE type it's feeding (ADD/SUB or MUL/DIV)
 2. Applies the correct encoding for that PE's tower level
 3. Decodes the result back to linear domain for output
 
-### The IOC Is the Limit
+### The NR-IOC Is the Limit
 
-The IOC conversion time is approximately **6.5ns** - negligible compared to compute cycles. This means:
+The NR-IOC conversion time is approximately **6.5ns** - negligible compared to compute cycles. This means:
 
 - Using bigger number representations (tower encodings) is essentially **free**
 - The throughput multiplier comes from each operation handling larger values (trit³ = 9× the value range)
-- The practical limit is how many tower levels the IOC can accurately encode/decode
+- The practical limit is how many tower levels the NR-IOC can accurately encode/decode
 
 **Open questions for future work:**
-- What's the maximum tower height the IOC can handle before precision degrades?
+- What's the maximum tower height the NR-IOC can handle before precision degrades?
 - Can we dynamically switch tower levels based on workload?
 - Is there a "sweet spot" beyond which additional levels don't help?
 
-Theoretically, we could keep going: 3^3^3^3, 3^3^3^3^3, etc. Each level multiplies effective throughput. Testing the IOC to find its practical ceiling is future research.
+Theoretically, we could keep going: 3^3^3^3, 3^3^3^3^3, etc. Each level multiplies effective throughput. Testing the NR-IOC to find its practical ceiling is future research.
 
 ### The North Star: Datacenter-Class AI on a Laptop
 
@@ -359,13 +359,13 @@ Here's what tower scaling makes possible. Consider a **27×27 chip** (~729 PEs):
 - ~1000W TDP
 - Requires datacenter cooling and power infrastructure
 
-**Equivalent AI throughput on a laptop (if IOC hits ~5 levels):**
+**Equivalent AI throughput on a laptop (if NR-IOC hits ~5 levels):**
 - One 27×27 optical chip
 - ~10-50 watts, battery-powered
 - Fits in your backpack
 - **32-96× the throughput of a B200**
 
-The optical hardware doesn't know it's small - it's just adding wavelengths. The IOC decides whether each operation means "trit + trit" or "tower + tower." Validating how high the IOC can climb is the key engineering challenge.
+The optical hardware doesn't know it's small - it's just adding wavelengths. The NR-IOC decides whether each operation means "trit + trit" or "tower + tower." Validating how high the NR-IOC can climb is the key engineering challenge.
 
 > **Note on Frontier comparisons:** You may see references elsewhere comparing optical chips to Frontier (1,200 PFLOPS). Frontier is a general-purpose scientific supercomputer at Oak Ridge National Lab - not an AI accelerator. While the raw FLOPS comparison is dramatic (a few chips matching an exascale supercomputer), it's misleading for AI workloads. The relevant comparison for N-Radix/AI accelerator work is against NVIDIA's B200/H100, which are purpose-built for the same tensor operations we target.
 
@@ -374,12 +374,12 @@ The optical hardware doesn't know it's small - it's just adding wavelengths. The
 The system has three potential bottlenecks, tested in sequence:
 
 ```
-Optical Compute → IOC → Transistor Interface (PCIe/Host)
+Optical Compute → NR-IOC → Transistor Interface (PCIe/Host)
    (unlimited)     (?)         (?)
 ```
 
-**Step 1: Test the IOC ceiling**
-- Push tower height until IOC precision degrades
+**Step 1: Test the NR-IOC ceiling**
+- Push tower height until NR-IOC precision degrades
 - Find max encoding/decoding accuracy
 
 **Step 2: Test the transistor interface**
@@ -387,10 +387,10 @@ Optical Compute → IOC → Transistor Interface (PCIe/Host)
 - What's the largest number representation it can handle efficiently?
 
 **Step 3: Optimize to the weakest link**
-- If IOC maxes out at 3^3^3^3 but PCIe chokes at 3^3^3 → use 3^3^3
+- If NR-IOC maxes out at 3^3^3^3 but PCIe chokes at 3^3^3 → use 3^3^3
 - No point over-engineering one stage if another bottlenecks first
 
-The optical compute is effectively unlimited - it just does add/subtract regardless of tower height. The real engineering challenge is matching the IOC to what the electronic interface can actually consume.
+The optical compute is effectively unlimited - it just does add/subtract regardless of tower height. The real engineering challenge is matching the NR-IOC to what the electronic interface can actually consume.
 
 ### Performance Impact
 
@@ -411,12 +411,12 @@ The 9× comes from each trit representing 9× the mathematical value (trit³ vs 
 The log-domain tower scaling approach:
 
 1. **Keeps hardware simple** - PEs only do add/subtract
-2. **Pushes complexity to IOC** - Encoding/decoding happens at the boundary
+2. **Pushes complexity to NR-IOC** - Encoding/decoding happens at the boundary
 3. **Respects the alternating pattern** - ADD/SUB on even levels, MUL/DIV on odd levels
 4. **Scales multiplicatively** - Each tower level multiplies effective throughput
-5. **Is essentially free** - IOC conversion time (6.5ns) is negligible
+5. **Is essentially free** - NR-IOC conversion time (6.5ns) is negligible
 
-The limit isn't the optical compute - it's how high we can push the tower before IOC precision degrades. Finding that ceiling is the next frontier.
+The limit isn't the optical compute - it's how high we can push the tower before NR-IOC precision degrades. Finding that ceiling is the next frontier.
 
 ---
 

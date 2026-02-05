@@ -1,4 +1,4 @@
-# IOC Driver Cheat Sheet
+# NR-IOC Driver Cheat Sheet
 
 **One page. Everything you need.**
 
@@ -7,7 +7,7 @@
 ## The Job
 
 ```
-Binary (PCIe) → IOC → Optical Chip → IOC → Binary (PCIe)
+Binary (PCIe) → NR-IOC → Optical Chip → NR-IOC → Binary (PCIe)
      ↑                                           ↑
   You encode                               You decode
 ```
@@ -26,7 +26,7 @@ Binary (PCIe) → IOC → Optical Chip → IOC → Binary (PCIe)
 
 ## Encoding
 
-**3^3 for everything.** IOC interprets based on PE type.
+**3^3 for everything.** NR-IOC interprets based on PE type.
 
 ```python
 # Float [-1,1] → 9 trits
@@ -52,11 +52,11 @@ def encode(val, num_trits=9):
 ## Commands
 
 ```c
-IOC_LOAD_WEIGHTS  0x01   // Load weights to PEs
-IOC_STREAM_INPUT  0x02   // Stream activations
-IOC_COMPUTE       0x03   // Do the math
-IOC_READ_OUTPUT   0x04   // Get results
-IOC_RESET         0x0F   // Reset
+NR_LOAD_WEIGHTS  0x01   // Load weights to PEs
+NR_STREAM_INPUT  0x02   // Stream activations
+NR_COMPUTE       0x03   // Do the math
+NR_READ_OUTPUT   0x04   // Get results
+NR_RESET         0x0F   // Reset
 ```
 
 **Typical flow:** `LOAD_WEIGHTS → STREAM_INPUT → READ_OUTPUT`
@@ -67,7 +67,7 @@ IOC_RESET         0x0F   // Reset
 
 | What | Time |
 |------|------|
-| IOC conversion | 6.5ns |
+| NR-IOC conversion | 6.5ns |
 | Weight load 27×27 | ~5ns |
 | Weight load 81×81 | ~131ns |
 | PCIe (per KB) | ~1μs |

@@ -32,7 +32,7 @@ This is **N-Radix** - an optical AI accelerator optimized for parallel matrix op
 | **3^3 mode (matrix multiply)** | ~148 PFLOPS / chip | ~59× | ~74× |
 | **3^3 mode (pure ADD)** | 738 PFLOPS / chip | 295× | 369× |
 
-*3^3 mode: Same hardware, same 3 states. The IOC reinterprets each trit as trit³ in log-log domain - adding/subtracting exponents is the same as multiplying/dividing the original numbers.*
+*3^3 mode: Same hardware, same 3 states. The NR-IOC reinterprets each trit as trit³ in log-log domain - adding/subtracting exponents is the same as multiplying/dividing the original numbers.*
 
 **Realistic workload expectations:**
 - **Matrix multiply** (the realistic AI workload comparison): ~1.8× boost. Most AI workloads are ~50/50 ADD/MUL, so only half the operations benefit from the 9× scaling.
@@ -84,12 +84,12 @@ The 9× headline number only applies to ADD-heavy workloads.
 - Level 3 returns to add/subtract on exponents-of-exponents
 - We must skip levels that would require mul/div circuits
 
-**The hardware doesn't change.** Every PE still performs the same optical add/subtract operations. The IOC handles encoding/decoding at the boundary and knows which interpretation to apply.
+**The hardware doesn't change.** Every PE still performs the same optical add/subtract operations. The NR-IOC handles encoding/decoding at the boundary and knows which interpretation to apply.
 
 **Why this is essentially "free":**
-- IOC conversion time: 6.5ns (negligible vs compute time)
+- NR-IOC conversion time: 6.5ns (negligible vs compute time)
 - Bigger number representations cost nothing extra in the optical domain
-- The real limit is how many tower levels the IOC can handle
+- The real limit is how many tower levels the NR-IOC can handle
 
 **The scaling ladder (still 3 physical states, IOC changes interpretation):**
 - Level 0: trit = trit (base)
@@ -97,9 +97,9 @@ The 9× headline number only applies to ADD-heavy workloads.
 - Level 3: trit represents trit^(3^3) (for MUL/DIV)
 - Level 4: trit represents trit^(3^3^3) ... and so on
 
-We could theoretically keep climbing (3^3^3^3, 3^3^3^3^3, etc.) until we hit IOC encoding limits. Each level up multiplies the representable range while the optical hardware stays identical.
+We could theoretically keep climbing (3^3^3^3, 3^3^3^3^3, etc.) until we hit NR-IOC encoding limits. Each level up multiplies the representable range while the optical hardware stays identical.
 
-**Bottleneck engineering:** After finding IOC limits, test the transistor interface (PCIe, host CPU). Optimize to the weakest link - no point pushing IOC to 3^3^3^3 if PCIe chokes at 3^3^3.
+**Bottleneck engineering:** After finding NR-IOC limits, test the transistor interface (PCIe, host CPU). Optimize to the weakest link - no point pushing NR-IOC to 3^3^3^3 if PCIe chokes at 3^3^3.
 
 </details>
 
@@ -214,7 +214,7 @@ This isn't experimental - it's **mature telecom technology**. The fiber optic in
 
 | Track | Description | Status |
 |-------|-------------|--------|
-| **IOC Hardware** | Input/Output Converter - bridge between binary systems and optical ternary chip | Spec complete, seeking FPGA prototype |
+| **NR-IOC Hardware** | N-Radix Input/Output Converter - bridge between binary systems and optical ternary chip | Spec complete, seeking FPGA prototype |
 | **Driver Software** | PCIe drivers and software API for host integration | Collaborator onboard |
 | **3^3 Encoding** | Log-domain encoding to make existing hardware 9x faster at crunching bigger numbers | Exploring theory |
 
@@ -380,7 +380,7 @@ For systems requiring multiple CPUs sharing a common clock, we use a **Round Tab
 
 - **Central Kerr Clock**: 617 MHz optical clock at the exact center
 - **Equidistant Components**: All CPUs are equidistant from the clock, ensuring synchronous operation
-- **Modular Scaling**: 1-8 CPUs per Round Table, each with its own IOC/IOA
+- **Modular Scaling**: 1-8 CPUs per Round Table, each with its own NR-IOC/IOA
 
 **Why "Round Table"?** Like King Arthur's knights, no CPU is closer to the center than another. This eliminates clock skew when coordinating multiple processors.
 
