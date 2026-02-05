@@ -140,6 +140,139 @@ No refresh cycles needed (unlike DRAM). Weights persist until explicitly overwri
 
 *Performance scales with array size squared and WDM channel count*
 
+---
+
+## Log-Domain Tower Scaling
+
+This section describes how we can dramatically increase compute density by leveraging the logarithmic domain and "power tower" encodings. The key insight: **the hardware doesn't change** - every PE still just does add/subtract. The magic happens in how we interpret numbers.
+
+### The Level System
+
+When you take the logarithm of a number, multiplication becomes addition. Take the log again (log-log), and *exponentiation* becomes addition. Each "level" up the tower transforms a harder operation into simple add/subtract.
+
+| Level | Domain | What ADD/SUB means in linear | States per trit | Total encoding states |
+|-------|--------|------------------------------|-----------------|----------------------|
+| 0 | Linear | Add/Subtract | 3 | 3 |
+| 1 | Log | Multiply/Divide | 3 | 3 |
+| 2 | Log-Log | Power/Root | 3 | 3^3 = 27 |
+| 3 | Log-Log-Log | Power Tower | 3 | 3^3^3 = 7,625,597,484,987 |
+| 4 | Log^4 | Hyper-4 | 3 | 3^3^3^3 = incomprehensibly large |
+
+The pattern: operations get "easier" at each level (harder ops become add/sub), but levels alternate between being add/sub friendly and requiring actual mul/div hardware.
+
+### Baseline Configuration (Current Architecture)
+
+In the standard TPU architecture, we have two types of Processing Elements:
+
+| PE Type | Operating Level | What it does | Physical operation |
+|---------|-----------------|--------------|-------------------|
+| **ADD/SUB PE** | Level 0 (linear) | Addition, Subtraction | Add/Subtract |
+| **MUL/DIV PE** | Level 1 (log) | Multiplication, Division | Add/Subtract (in log domain) |
+
+Both PE types perform the **same physical operation** (optical add/subtract). The difference is interpretation:
+- ADD/SUB PEs work on linear-encoded numbers
+- MUL/DIV PEs work on log-encoded numbers (where add = multiply, subtract = divide)
+
+### Scaled Configuration for More Compute
+
+To increase compute density, we push each PE type up the tower:
+
+| PE Type | Baseline Level | Scaled Level | New capability | States |
+|---------|---------------|--------------|----------------|--------|
+| **ADD/SUB PE** | 0 → | 2 | Power towers (via add) | 3^3 = 27 |
+| **MUL/DIV PE** | 1 → | 3 | Hyper operations (via add) | 3^3^3 |
+
+**Critical detail:** Notice that ADD/SUB jumps from 0 to 2 (skipping 1), and MUL/DIV jumps from 1 to 3 (skipping 2). This isn't arbitrary - it's necessary.
+
+### Why the Asymmetry? The Alternating Pattern
+
+The levels alternate between "add/sub friendly" and "mul/div required":
+
+```
+Level 0: Linear domain
+         ├─ Addition → add         ✓ (add/sub hardware works)
+         └─ Multiplication → ???   ✗ (needs mul hardware)
+
+Level 1: Log domain
+         ├─ Multiplication → add   ✓ (add/sub hardware works)
+         └─ Exponentiation → ???   ✗ (needs mul hardware)
+
+Level 2: Log-log domain
+         ├─ Exponentiation → add   ✓ (add/sub hardware works)
+         └─ Power tower → ???      ✗ (needs mul hardware)
+
+Level 3: Log-log-log domain
+         ├─ Power tower → add      ✓ (add/sub hardware works)
+         └─ Hyper-4 → ???          ✗ (needs mul hardware)
+```
+
+**The rule:** At each level, ONE class of operations becomes add/subtract, while the NEXT harder class still requires multiplication.
+
+So when scaling:
+- **ADD/SUB PEs** must land on EVEN levels (0, 2, 4...) where addition IS addition
+- **MUL/DIV PEs** must land on ODD levels (1, 3, 5...) where multiplication IS addition
+
+Jumping to an intermediate level would require actual multiply hardware, which defeats the purpose.
+
+### The Hardware Doesn't Change
+
+This is the beautiful part. After scaling:
+
+| Component | Before scaling | After scaling |
+|-----------|---------------|---------------|
+| PE internals | Add/subtract circuits | Add/subtract circuits (same) |
+| Optical paths | Unchanged | Unchanged |
+| Clock rate | 617 MHz | 617 MHz (same) |
+| **IOC** | Encodes/decodes 3 states | Encodes/decodes 27+ states |
+
+The PEs are completely oblivious to the tower level. They just see optical signals and add/subtract them. All the intelligence is in the **IOC (Integrated Optical Converter)**, which:
+
+1. Knows which PE type it's feeding (ADD/SUB or MUL/DIV)
+2. Applies the correct encoding for that PE's tower level
+3. Decodes the result back to linear domain for output
+
+### The IOC Is the Limit
+
+The IOC conversion time is approximately **6.5ns** - negligible compared to compute cycles. This means:
+
+- Using bigger number representations (tower encodings) is essentially **free**
+- The throughput multiplier scales with states: 27 states = 9× throughput (27/3)
+- The practical limit is how many tower levels the IOC can accurately encode/decode
+
+**Open questions for future work:**
+- What's the maximum tower height the IOC can handle before precision degrades?
+- Can we dynamically switch tower levels based on workload?
+- Is there a "sweet spot" beyond which additional levels don't help?
+
+Theoretically, we could keep going: 3^3^3^3, 3^3^3^3^3, etc. Each level multiplies effective throughput. Testing the IOC to find its practical ceiling is future research.
+
+### Performance Impact
+
+With 3^3 = 27 state encoding (scaled configuration):
+
+| Metric | Base (3 states) | Scaled (27 states) | Multiplier |
+|--------|-----------------|-------------------|------------|
+| States per trit | 3 | 27 | 9× |
+| 27×27 array | 65 TFLOPS | 583 TFLOPS | 9× |
+| 243×243 array | 5.2 PFLOPS | 47 PFLOPS | 9× |
+| 960×960 array | 82 PFLOPS | 738 PFLOPS | 9× |
+
+The 9× comes directly from the state ratio: 27/3 = 9. Same hardware, same power, 9× the throughput.
+
+### Summary
+
+The log-domain tower scaling approach:
+
+1. **Keeps hardware simple** - PEs only do add/subtract
+2. **Pushes complexity to IOC** - Encoding/decoding happens at the boundary
+3. **Respects the alternating pattern** - ADD/SUB on even levels, MUL/DIV on odd levels
+4. **Scales multiplicatively** - Each tower level multiplies effective throughput
+5. **Is essentially free** - IOC conversion time (6.5ns) is negligible
+
+The limit isn't the optical compute - it's how high we can push the tower before IOC precision degrades. Finding that ceiling is the next frontier.
+
+---
+
 ## vs General-Purpose Path
 
 The `standard_computer/` directory contains the von Neumann architecture path (fetch-decode-execute, branching, etc.). This TPU path trades flexibility for raw throughput on tensor operations.

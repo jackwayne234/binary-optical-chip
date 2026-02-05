@@ -33,6 +33,38 @@ This is a **Ternary Processing Unit (TPU)** - an AI accelerator optimized for pa
 
 *3^3 mode: Same hardware, same 3 states. The IOC reinterprets each trit as trit³ in log-log domain. In this domain, adding and subtracting exponents is the same as multiplying and dividing the original numbers - so the hardware simplifies to just add/subtract operations. No multiply or divide circuits needed. Result: 9× more compute per cycle with simpler, faster hardware.*
 
+<details>
+<summary><strong>Log-Domain Tower Scaling: The Key Insight</strong></summary>
+
+**The asymmetry between ADD/SUB and MUL/DIV PEs:**
+
+| PE Type | Baseline | Scaled Mode | Tower Representation |
+|---------|----------|-------------|---------------------|
+| ADD/SUB | Level 0 (values) | Level 2 | 3^3 = 27 states |
+| MUL/DIV | Level 1 (exponents) | Level 3 | 3^3^3 = 7.6 trillion states |
+
+**Why MUL/DIV goes up 2 levels, not 1:**
+- Level 2 would require *actual* multiply/divide hardware (defeating the purpose)
+- Level 3 returns to add/subtract on exponents-of-exponents
+- We must skip levels that would require mul/div circuits
+
+**The hardware doesn't change.** Every PE still performs the same optical add/subtract operations. The IOC handles encoding/decoding at the boundary and knows which interpretation to apply.
+
+**Why this is essentially "free":**
+- IOC conversion time: 6.5ns (negligible vs compute time)
+- Bigger number representations cost nothing extra in the optical domain
+- The real limit is how many tower levels the IOC can handle
+
+**The scaling ladder:**
+- Level 0: 3 states (base trit)
+- Level 2: 3^3 = 27 states (9× throughput)
+- Level 3: 3^3^3 = 7.6T states (for MUL/DIV)
+- Level 4: 3^3^3^3 ... and so on
+
+We could theoretically keep climbing (3^3^3^3, 3^3^3^3^3, etc.) until we hit IOC encoding limits. Each level up multiplies the representable range while the optical hardware stays identical.
+
+</details>
+
 The optical approach eliminates the heat and power constraints that limit electronic accelerators, while delivering raw performance that exceeds anything silicon can achieve.
 
 ---
