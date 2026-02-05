@@ -23,7 +23,7 @@
 \maketitle
 
 \begin{abstract}
-We present an optical Tensor Processing Unit (TPU) architecture based on wavelength-division ternary logic. Building on our prior theoretical work demonstrating that wavelength encoding bypasses the radix economy penalty, we now describe a complete systolic array architecture optimized for AI/ML workloads. The design employs a novel log-domain tower scaling mechanism where the Input/Output Converter (IOC) reinterprets base-3 trits as $\text{trit}^3$ (3\textsuperscript{3} encoding), yielding up to 9$\times$ throughput improvement for addition-heavy operations while using identical optical hardware. We analyze the practical limits of this scaling approach, showing that while 3\textsuperscript{3} encoding is achievable with standard 64-bit hardware, higher towers (3\textsuperscript{3}\textsuperscript{3}\textsuperscript{3}) would require 12 terabit registers—placing them beyond physical realizability. For real-world matrix multiplication workloads (50\% multiply, 50\% add), the architecture delivers approximately 1.8$\times$ throughput improvement. Our analysis projects that a validated 27$\times$27 processing element array, combined with sufficient IOC tower scaling, could theoretically match Frontier-class supercomputer performance in a laptop form factor.
+We present an optical Tensor Processing Unit (TPU) architecture based on wavelength-division ternary logic. Building on our prior theoretical work demonstrating that wavelength encoding bypasses the radix economy penalty, we now describe a complete systolic array architecture optimized for AI/ML workloads. The design employs a novel log-domain tower scaling mechanism where the Input/Output Converter (IOC) reinterprets base-3 trits as $\text{trit}^3$ (3\textsuperscript{3} encoding), yielding up to 9$\times$ throughput improvement for pure addition workloads while using identical optical hardware. We analyze the practical limits of this scaling approach, showing that while 3\textsuperscript{3} encoding is achievable with standard 64-bit hardware, higher towers (3\textsuperscript{3}\textsuperscript{3}\textsuperscript{3}) would require 12 terabit registers—placing them beyond physical realizability. For real-world matrix multiplication workloads (50\% multiply, 50\% add), the architecture delivers approximately 1.8$\times$ throughput improvement via Amdahl's Law. At 960$\times$960 scale, this yields 148 PFLOPS per chip for matrix multiply—meaning 8 chips could match Frontier's 1,200 PFLOPS, compared to Frontier's 9,402 nodes.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -233,7 +233,7 @@ This is not future hardware—it is mathematically beyond any physical computer.
 
 \subsection{Throughput with 3\textsuperscript{3} Encoding}
 
-The 3\textsuperscript{3} encoding provides a 9$\times$ effective throughput increase for operations that benefit from it. However, only ADD/SUB operations benefit—MUL/DIV stays at baseline.
+The 3\textsuperscript{3} encoding provides a 9$\times$ effective throughput increase for operations that benefit from it. However, \textbf{only ADD/SUB operations benefit}—MUL/DIV operations remain at baseline throughput. This distinction is critical for understanding real-world performance.
 
 \subsection{Real-World Matrix Multiply Performance}
 
@@ -265,39 +265,60 @@ Pure multiply & 0\% & 100\% & 1$\times$ \\
 \label{tab:performance}
 \end{table}
 
+\textbf{Key insight:} The 9$\times$ boost only applies to ADD-heavy workloads (e.g., pure accumulation, vector addition). For realistic AI workloads like matrix multiplication, the 50/50 split between ADD and MUL operations limits the effective boost to $\sim$1.8$\times$ via Amdahl's Law. This is still substantial—but claims must be workload-specific.
+
 \subsection{Scaling Projections}
 
 \begin{table}[H]
 \centering
-\caption{Array Size vs Performance}
-\begin{tabular}{@{}lrrr@{}}
+\caption{Array Size vs Performance (Three Modes)}
+\begin{tabular}{@{}lrrrr@{}}
 \toprule
-\textbf{Array} & \textbf{PEs} & \textbf{Base} & \textbf{3\textsuperscript{3} (MatMul)} \\
+\textbf{Array} & \textbf{PEs} & \textbf{Base Mode} & \textbf{3\textsuperscript{3} MatMul} & \textbf{3\textsuperscript{3} Pure ADD} \\
 \midrule
-27$\times$27 & 729 & 65 TFLOPS & 117 TFLOPS \\
-81$\times$81 & 6,561 & 583 TFLOPS & 1.0 PFLOPS \\
-243$\times$243 & 59,049 & 5.2 PFLOPS & 9.4 PFLOPS \\
-960$\times$960 & 921,600 & 82 PFLOPS & 148 PFLOPS \\
+27$\times$27 & 729 & 65 TFLOPS & 117 TFLOPS & 583 TFLOPS \\
+81$\times$81 & 6,561 & 583 TFLOPS & 1.0 PFLOPS & 5.2 PFLOPS \\
+243$\times$243 & 59,049 & 5.2 PFLOPS & 9.4 PFLOPS & 47 PFLOPS \\
+960$\times$960 & 921,600 & 82 PFLOPS & $\sim$148 PFLOPS & 738 PFLOPS \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\textbf{Note:} ``Base Mode'' is raw optical performance without tower scaling. ``3\textsuperscript{3} MatMul'' applies the 1.8$\times$ boost (realistic for AI workloads). ``3\textsuperscript{3} Pure ADD'' applies the full 9$\times$ boost (only achievable for accumulation-dominated workloads).
 
 \subsection{Comparison to State-of-the-Art}
 
 \begin{table}[H]
 \centering
-\caption{Performance Comparison}
-\begin{tabular}{@{}lrr@{}}
+\caption{Performance Comparison (Matrix Multiply Workloads)}
+\begin{tabular}{@{}lrrr@{}}
 \toprule
-\textbf{System} & \textbf{Performance} & \textbf{Power} \\
+\textbf{System} & \textbf{Performance} & \textbf{Power} & \textbf{Nodes/Chips} \\
 \midrule
-NVIDIA B200 & 2.5 PFLOPS & 1,000W \\
-Optical 243$\times$243 & 9.4 PFLOPS & $\sim$100W \\
-Frontier (Oak Ridge) & 1,200 PFLOPS & 21 MW \\
-Optical 960$\times$960 $\times$ 15 chips & 1,230 PFLOPS & $\sim$6 kW \\
+NVIDIA B200 & 2.5 PFLOPS & 1,000W & 1 GPU \\
+Optical 243$\times$243 & 9.4 PFLOPS & $\sim$100W & 1 chip \\
+Optical 960$\times$960 & 148 PFLOPS & $\sim$400W & 1 chip \\
+Frontier (Oak Ridge) & 1,200 PFLOPS & 21 MW & 9,402 nodes \\
+Optical 960$\times$960 $\times$ 8 & $\sim$1,184 PFLOPS & $\sim$3.2 kW & 8 chips \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\textbf{Critical distinction:} The above comparison uses the realistic 1.8$\times$ matrix multiply numbers. For pure ADD workloads (e.g., accumulation, vector operations), the picture changes dramatically:
+
+\begin{table}[H]
+\centering
+\caption{Performance Comparison (Pure ADD Workloads)}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+\textbf{System} & \textbf{Performance} & \textbf{Chips to Match Frontier} \\
+\midrule
+Optical 960$\times$960 (Pure ADD) & 738 PFLOPS & 2 chips \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The ``2 chips = Frontier'' claim is accurate \textbf{only for pure ADD workloads}. For matrix multiplication (realistic AI training/inference), it is \textbf{8 chips = Frontier}. Both are remarkable—8 chips vs. 9,402 nodes is a 1,175$\times$ reduction in system complexity.
 
 \section{Input/Output Converter (IOC)}
 
@@ -326,29 +347,49 @@ The optical hardware is unlimited—it simply adds wavelengths regardless of wha
 
 Testing reveals that 3\textsuperscript{3} encoding works with standard 64-bit hardware. Higher levels require arbitrary precision arithmetic, adding latency and complexity that negates the throughput benefit.
 
-\section{The Vision: Frontier on a Laptop}
+\section{The Vision: Frontier-Class Performance}
 
-The most striking implication of tower scaling is the potential for extreme miniaturization. Consider a 27$\times$27 PE array (729 PEs):
+\subsection{Realistic Near-Term: Matrix Multiply Workloads}
+
+For AI training and inference (matrix multiply workloads), the 1.8$\times$ tower scaling boost applies:
 
 \begin{table}[H]
 \centering
-\caption{27$\times$27 Array at Various Tower Levels}
-\begin{tabular}{@{}lrl@{}}
+\caption{Matching Frontier for Matrix Multiply}
+\begin{tabular}{@{}lrr@{}}
 \toprule
-\textbf{Tower} & \textbf{Throughput} & \textbf{Equivalent} \\
+\textbf{Configuration} & \textbf{Performance} & \textbf{vs Frontier} \\
 \midrule
-Base & 65 TFLOPS & High-end GPU \\
-3\textsuperscript{3} & 117 TFLOPS & Small cluster \\
-+2 levels & $\sim$1 PFLOPS & Supercomputer node \\
-+3 levels & $\sim$10 PFLOPS & Major HPC system \\
-+4-5 levels & $\sim$1,200 PFLOPS & Frontier \\
+Single 960$\times$960 chip & 148 PFLOPS & 12.3\% \\
+8 chips & 1,184 PFLOPS & $\sim$99\% \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-If IOC precision could be extended to 5 tower levels (a significant but not physically impossible challenge), a single 27$\times$27 optical chip—small enough for a laptop—could theoretically match Frontier's 1,200 PFLOPS.
+\textbf{8 chips matching 9,402 Frontier nodes} represents a 1,175$\times$ reduction in system complexity. This is the realistic comparison for AI workloads.
 
-This represents a shift from ``more transistors = more compute'' to ``higher IOC tower = more compute.'' The optical hardware remains unchanged; only the interpretation at the boundary determines effective throughput.
+\subsection{Best-Case: Pure ADD Workloads}
+
+For workloads dominated by accumulation (vector addition, certain scientific computing patterns), the full 9$\times$ tower scaling applies:
+
+\begin{table}[H]
+\centering
+\caption{Matching Frontier for Pure ADD}
+\begin{tabular}{@{}lrr@{}}
+\toprule
+\textbf{Configuration} & \textbf{Performance} & \textbf{vs Frontier} \\
+\midrule
+Single 960$\times$960 chip & 738 PFLOPS & 61.5\% \\
+2 chips & 1,476 PFLOPS & $\sim$123\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The ``2 chips = Frontier'' claim is valid \textbf{only for pure ADD workloads}. This should be stated explicitly whenever cited.
+
+\subsection{The Fundamental Shift}
+
+Both scenarios represent a paradigm shift from ``more transistors = more compute'' to ``optical parallelism + tower scaling = more compute.'' The key insight is that even the ``conservative'' matrix multiply numbers (8 chips) represent extraordinary density compared to conventional supercomputers.
 
 \section{Conclusion}
 
@@ -356,12 +397,20 @@ We have presented a complete optical TPU architecture that extends wavelength-di
 
 \begin{enumerate}
 \item \textbf{Systolic array architecture}: Identical topology to proven TPU designs, but with optical ternary PEs
-\item \textbf{Log-domain tower scaling}: 3\textsuperscript{3} encoding yields 9$\times$ throughput for ADD-heavy operations, $\sim$1.8$\times$ for matrix multiply
+\item \textbf{Log-domain tower scaling}: 3\textsuperscript{3} encoding yields 9$\times$ throughput for pure ADD operations, $\sim$1.8$\times$ for matrix multiply (via Amdahl's Law on the 50/50 ADD/MUL split)
 \item \textbf{Practical limits identified}: 3\textsuperscript{3}\textsuperscript{3}\textsuperscript{3} requires 12 terabit registers—beyond physical realizability
 \item \textbf{IOC as the true ceiling}: The optical hardware is unlimited; scaling is bounded by electronic interface precision
+\item \textbf{Honest performance claims}: 8 chips match Frontier for matrix multiply; 2 chips match Frontier only for pure ADD workloads
 \end{enumerate}
 
-The architecture offers a path to supercomputer-class performance in dramatically smaller form factors, contingent on advances in IOC tower precision. The fundamental physics allows it; the engineering challenge is now clearly defined.
+The architecture offers a path to supercomputer-class performance in dramatically smaller form factors. At 960$\times$960 scale with 3\textsuperscript{3} encoding:
+\begin{itemize}
+\item \textbf{Base mode}: 82 PFLOPS/chip
+\item \textbf{Matrix multiply (1.8$\times$)}: $\sim$148 PFLOPS/chip
+\item \textbf{Pure ADD (9$\times$)}: 738 PFLOPS/chip
+\end{itemize}
+
+Even the conservative matrix multiply numbers represent a transformative improvement: 8 chips vs.\ Frontier's 9,402 nodes. The fundamental physics allows it; the engineering challenge is now clearly defined.
 
 \section*{Acknowledgment}
 

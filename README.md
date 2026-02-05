@@ -28,10 +28,16 @@ This is a **Ternary Processing Unit (TPU)** - an AI accelerator optimized for pa
 
 | Configuration | Performance | vs B200 (2.5 PFLOPS) | vs Frontier (1,200 PFLOPS) |
 |---------------|-------------|----------------------|----------------------------|
-| **Base mode** | 82 PFLOPS / chip | **33×** faster | 15 chips = Frontier |
-| **3^3 mode** | 738 PFLOPS / chip | **295×** faster | **2 chips = Frontier** |
+| **Base mode** | 82 PFLOPS / chip | 33× | 15 chips = Frontier |
+| **3^3 mode (matrix multiply)** | ~148 PFLOPS / chip | ~59× | **8 chips = Frontier** |
+| **3^3 mode (pure ADD)** | 738 PFLOPS / chip | 295× | 2 chips = Frontier |
 
-*3^3 mode: Same hardware, same 3 states. The IOC reinterprets each trit as trit³ in log-log domain. In this domain, adding and subtracting exponents is the same as multiplying and dividing the original numbers - so the hardware simplifies to just add/subtract operations. No multiply or divide circuits needed. Result: 9× more compute per cycle with simpler, faster hardware.*
+*3^3 mode: Same hardware, same 3 states. The IOC reinterprets each trit as trit³ in log-log domain - adding/subtracting exponents is the same as multiplying/dividing the original numbers.*
+
+**Realistic workload expectations:**
+- **Matrix multiply** (the realistic AI workload comparison): ~1.8× boost. Most AI workloads are ~50/50 ADD/MUL, so only half the operations benefit from the 9× scaling.
+- **Pure ADD** (9× boost): Only applies to accumulation-heavy operations where nearly all computation is addition/subtraction.
+- The "2 chips = Frontier" number is for pure ADD workloads only. For typical AI matrix multiply, expect ~8 chips.
 
 <details>
 <summary><strong>Log-Domain Tower Scaling: The Key Insight</strong></summary>
@@ -229,46 +235,6 @@ This isn't experimental - it's **mature telecom technology**. The fiber optic in
 
 ---
 
-## Building the TPU: Implementation Phases
-
-### [Phase 1: Visible Light Prototype](Phase1_Prototype/)
-**Status:** Parts Ordered / Construction In Progress
-
-A 24"x24" visible-light prototype using Red/Green/Blue lasers and 3D-printed optics to prove the core ternary logic works.
-
-- **Firmware**: ESP32 controller ([`ternary_logic_controller.ino`](Phase1_Prototype/firmware/ternary_logic_controller/ternary_logic_controller.ino))
-- **Hardware**: Complete BOM, 3D print files (SCAD), assembly instructions
-- **Demo**: Blue + Red = Purple = 0 (proves +1 + -1 = 0 optically)
-
-**[Start Building](Phase1_Prototype/NEXT_STEPS.md)**
-
-### [Phase 2: Fiber Benchtop](Phase2_Fiber_Benchtop/)
-**Status:** Procurement
-
-10GHz fiber-optic benchtop using standard ITU C-Band telecom equipment to prove the architecture scales to real-world speeds.
-
-- **Firmware**: SFP+ laser tuning scripts ([`sfp_tuner.py`](Phase2_Fiber_Benchtop/firmware/sfp_tuner.py))
-- **Target**: Demonstrate 1.58 bits/symbol (vs 1 bit for binary)
-
-### [Phase 3: Silicon Photonics](Phase3_Chip_Simulation/)
-**Status:** Design & Partnership Development
-
-Miniaturizing the design onto a Lithium Niobate (LiNbO3) photonic integrated circuit.
-
-- **Goal**: GDSII layouts for foundry fabrication
-- **Target**: MPW (Multi-Project Wafer) run
-
-### [Phase 4: DIY Fab (Contingency)](Phase4_DIY_Fab/)
-**Status:** Planning
-
-If commercial fabrication partnerships fail, we'll build a garage-scale semiconductor fab using DIY photolithography.
-
-- **Resolution**: 5-10um (sufficient for proof-of-concept)
-- **Safety**: Full ORM assessment included
-- **Budget**: $800-3000
-
----
-
 ## The Core Insight: Wavelength-Division Ternary Logic
 
 Ternary (base-3) logic is mathematically optimal for computing (closest to Euler's number *e*), but electronic implementations require 40x more transistors per trit than bits. **We solve this by using light wavelengths instead of voltage levels:**
@@ -300,9 +266,51 @@ Sum-Frequency Generation in nonlinear crystals performs addition optically:
 
 ---
 
-## Quick Start
+## Legacy & Alternative Paths
 
-### Run Simulations
+The sections below document earlier prototyping phases and an alternative CPU architecture. The main focus is now the TPU systolic array described above.
+
+### Building the TPU: Implementation Phases
+
+#### [Phase 1: Visible Light Prototype](Phase1_Prototype/)
+**Status:** Parts Ordered / Construction In Progress
+
+A 24"x24" visible-light prototype using Red/Green/Blue lasers and 3D-printed optics to prove the core ternary logic works.
+
+- **Firmware**: ESP32 controller ([`ternary_logic_controller.ino`](Phase1_Prototype/firmware/ternary_logic_controller/ternary_logic_controller.ino))
+- **Hardware**: Complete BOM, 3D print files (SCAD), assembly instructions
+- **Demo**: Blue + Red = Purple = 0 (proves +1 + -1 = 0 optically)
+
+**[Start Building](Phase1_Prototype/NEXT_STEPS.md)**
+
+#### [Phase 2: Fiber Benchtop](Phase2_Fiber_Benchtop/)
+**Status:** Procurement
+
+10GHz fiber-optic benchtop using standard ITU C-Band telecom equipment to prove the architecture scales to real-world speeds.
+
+- **Firmware**: SFP+ laser tuning scripts ([`sfp_tuner.py`](Phase2_Fiber_Benchtop/firmware/sfp_tuner.py))
+- **Target**: Demonstrate 1.58 bits/symbol (vs 1 bit for binary)
+
+#### [Phase 3: Silicon Photonics](Phase3_Chip_Simulation/)
+**Status:** Design & Partnership Development
+
+Miniaturizing the design onto a Lithium Niobate (LiNbO3) photonic integrated circuit.
+
+- **Goal**: GDSII layouts for foundry fabrication
+- **Target**: MPW (Multi-Project Wafer) run
+
+#### [Phase 4: DIY Fab (Contingency)](Phase4_DIY_Fab/)
+**Status:** Planning
+
+If commercial fabrication partnerships fail, we'll build a garage-scale semiconductor fab using DIY photolithography.
+
+- **Resolution**: 5-10um (sufficient for proof-of-concept)
+- **Safety**: Full ORM assessment included
+- **Budget**: $800-3000
+
+### Quick Start
+
+#### Run Simulations
 ```bash
 cd Research/programs/
 python3 optical_selector.py    # Ring resonator simulation
@@ -310,7 +318,7 @@ python3 sfg_mixer.py           # Sum-frequency generation mixer
 python3 test_photonic_logic.py # Logic verification
 ```
 
-### Build the Phase 1 Prototype
+#### Build the Phase 1 Prototype
 ```bash
 # 1. Review the BOM and order parts
 cat Phase1_Prototype/hardware/BOM_24x24_Prototype.md
@@ -327,18 +335,16 @@ cat Phase1_Prototype/hardware/BOM_24x24_Prototype.md
 # Result: Purple light = 0
 ```
 
-### Phase 2 Fiber Benchtop
+#### Phase 2 Fiber Benchtop
 ```bash
 python3 Phase2_Fiber_Benchtop/firmware/sfp_tuner.py
 ```
 
----
-
-## CPU Architecture (Legacy/Alternative Path)
+### CPU Architecture
 
 > **Note:** The sections below document an alternative general-purpose CPU approach. The main focus of this project is now the TPU/AI accelerator architecture described above. This CPU work is preserved for reference and potential future exploration.
 
-### General-Purpose Optical CPU
+#### General-Purpose Optical CPU
 
 While the TPU architecture is optimized for matrix operations, a general-purpose optical CPU would require:
 
@@ -348,7 +354,7 @@ While the TPU architecture is optimized for matrix operations, a general-purpose
 
 The CPU path is preserved here because some applications (embedded systems, specialized controllers) might benefit from ternary logic without needing TPU-scale parallelism.
 
-### The Round Table Topology (Multi-CPU Configuration)
+#### The Round Table Topology (Multi-CPU Configuration)
 
 For systems requiring multiple CPUs sharing a common clock, we use a **Round Table** architecture:
 
@@ -372,7 +378,7 @@ For systems requiring multiple CPUs sharing a common clock, we use a **Round Tab
 
 **Why "Round Table"?** Like King Arthur's knights, no CPU is closer to the center than another. This eliminates clock skew when coordinating multiple processors.
 
-### Repository Structure (Research/programs/)
+#### Repository Structure (Research/programs/)
 
 Core Meep FDTD simulations for photonic components:
 
@@ -382,9 +388,18 @@ Core Meep FDTD simulations for photonic components:
 - `photodetector.py` - Detector simulations
 - `test_photonic_logic.py` - Logic gate verification
 
-### Research Papers
+#### Research Papers
 
 - **[`papers/`](Research/papers/)**: Published paper, LaTeX source, figures, supplementary materials
+
+### Project Status
+
+| Phase | Component | Status | Timeline |
+|-------|-----------|--------|----------|
+| 1 | Visible Light Prototype | Building | 1 month |
+| 2 | Fiber Benchtop (10GHz) | Planning | 2 months |
+| 3 | Silicon Chip | Seeking Funding | TBD |
+| 4 | DIY Fab (Backup) | Contingency | On Demand |
 
 ---
 
@@ -461,17 +476,6 @@ Core Meep FDTD simulations for photonic components:
 | Jan 2026 | Initial release with Zenodo publication |
 
 </details>
-
----
-
-## Project Status
-
-| Phase | Component | Status | Timeline |
-|-------|-----------|--------|----------|
-| 1 | Visible Light Prototype | Building | 1 month |
-| 2 | Fiber Benchtop (10GHz) | Planning | 2 months |
-| 3 | Silicon Chip | Seeking Funding | TBD |
-| 4 | DIY Fab (Backup) | Contingency | On Demand |
 
 ---
 

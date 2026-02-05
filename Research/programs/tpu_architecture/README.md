@@ -132,13 +132,18 @@ No refresh cycles needed (unlike DRAM). Weights persist until explicitly overwri
 
 ## Performance Targets
 
-| Configuration | Peak Performance | Notes |
-|--------------|------------------|-------|
-| 27x27 array | 583 TFLOPS | Single chip, base |
-| 243x243 array | 47 PFLOPS | Multi-chiplet |
-| 960x960 array | 738 PFLOPS | Full scale |
+| Configuration | Base Mode | 3^3 Matrix Multiply (~1.8×) | 3^3 Pure ADD (9×) |
+|--------------|-----------|----------------------------|-------------------|
+| 27×27 array | 65 TFLOPS | ~117 TFLOPS | 583 TFLOPS |
+| 243×243 array | 5.2 PFLOPS | ~9.4 PFLOPS | 47 PFLOPS |
+| 960×960 array | 82 PFLOPS | ~148 PFLOPS | 738 PFLOPS |
 
-*Performance scales with array size squared and WDM channel count*
+**Frontier comparison (1,200 PFLOPS):**
+- Base mode: 15 chips = Frontier
+- 3^3 matrix multiply: **8 chips = Frontier** (realistic AI workloads)
+- 3^3 pure ADD: 2 chips = Frontier (accumulation-heavy workloads only)
+
+*See "Real-World Performance" section for why matrix multiply sees ~1.8× instead of 9×*
 
 ---
 
@@ -243,11 +248,11 @@ This isn't an engineering challenge - it's a fundamental impossibility. You can'
 
 ### Real-World Performance: The 1.8× Reality
 
-The 9× throughput multiplier is real, but it only applies to ADD/SUB operations. Here's why matrix multiply sees a more modest improvement.
+**IMPORTANT:** The 9× throughput multiplier is real, but it **only applies to pure ADD/SUB operations**. Matrix multiply - the core AI workload - sees a more modest ~1.8× improvement due to Amdahl's Law.
 
 **The asymmetry:**
 - **ADD/SUB PEs:** Benefit fully from 3^3 encoding (9× throughput)
-- **MUL/DIV PEs:** Stay at baseline (1× throughput) because jumping to level 4 requires 3^3^3^3 encoding
+- **MUL/DIV PEs:** Stay at baseline (1× throughput) because jumping to level 4 requires 3^3^3^3 encoding (physically impossible - see section above)
 
 **For matrix multiply (which is ~50% additions, ~50% multiplications):**
 
@@ -267,18 +272,26 @@ Speedup = 1 / ((1 - 0.5) + 0.5/9)
 
 **Workload-specific performance:**
 
-| Workload | ADD % | MUL % | Overall Boost |
-|----------|-------|-------|---------------|
-| Matrix multiply | 50% | 50% | ~1.8× |
-| Pure accumulation | 100% | 0% | 9× |
-| Pure multiply | 0% | 100% | 1× |
-| Transformer attention | ~60% | ~40% | ~2.1× |
+| Workload | ADD % | MUL % | Overall Boost | Notes |
+|----------|-------|-------|---------------|-------|
+| Matrix multiply | 50% | 50% | ~1.8× | Core AI workload |
+| Transformer attention | ~60% | ~40% | ~2.1× | More accumulation |
+| Pure accumulation | 100% | 0% | 9× | Reductions, sums |
+| Pure multiply | 0% | 100% | 1× | No improvement |
 
-**What this means:**
-- The "9× throughput" headline is accurate but only for ADD-heavy workloads
-- Matrix multiply (the core AI workload) sees ~1.8× improvement
-- Transformer attention (with more accumulation) sees ~2.1×
-- Pure accumulation loops (like reductions) get the full 9×
+**What this means for Frontier comparisons:**
+
+| Mode | 960×960 Performance | Chips to match Frontier (1,200 PFLOPS) |
+|------|---------------------|---------------------------------------|
+| Base (no 3^3) | 82 PFLOPS | 15 chips |
+| **3^3 matrix multiply** | **~148 PFLOPS** | **8 chips** |
+| 3^3 pure ADD | 738 PFLOPS | 2 chips |
+
+**Key takeaways:**
+- **For realistic AI workloads (matrix multiply): 8 chips = Frontier**
+- The "2 chips = Frontier" claim only holds for pure ADD workloads (e.g., accumulation loops)
+- The 9× number is mathematically correct but applies to a limited subset of operations
+- Matrix multiply (GEMM) - which dominates training and inference - sees ~1.8×
 
 **Adjusted performance targets with 3^3 scaling:**
 
@@ -327,13 +340,15 @@ Theoretically, we could keep going: 3^3^3^3, 3^3^3^3^3, etc. Each level multipli
 
 Here's what tower scaling makes possible. Consider a **27×27 chip** (~729 PEs):
 
-| Tower Levels | Effective Throughput | Equivalent To |
-|--------------|---------------------|---------------|
-| Base (3) | ~65 TFLOPS | High-end GPU |
-| +1 level (3^3) | ~583 TFLOPS | Small cluster |
-| +2 levels | ~5.2 PFLOPS | Supercomputer node |
-| +3 levels | ~47 PFLOPS | Major HPC system |
-| +4-5 levels | ~400-1,200 PFLOPS | **Frontier** |
+| Tower Levels | Effective Throughput (Pure ADD) | Effective Throughput (Matrix Multiply) | Equivalent To |
+|--------------|--------------------------------|---------------------------------------|---------------|
+| Base (3) | ~65 TFLOPS | ~65 TFLOPS | High-end GPU |
+| +1 level (3^3) | ~583 TFLOPS | ~117 TFLOPS | Small cluster |
+| +2 levels | ~5.2 PFLOPS | ~1.0 PFLOPS | Supercomputer node |
+| +3 levels | ~47 PFLOPS | ~9.4 PFLOPS | Major HPC system |
+| +4-5 levels | ~400-1,200 PFLOPS | ~80-240 PFLOPS | **Frontier** (pure ADD only) |
+
+*Note: Matrix multiply throughput is ~1.8× base due to Amdahl's Law (50% ADD at 9×, 50% MUL at 1×). Pure ADD workloads get the full tower multiplier.*
 
 **Frontier today:**
 - 9,400 nodes, 37,000 GPUs
