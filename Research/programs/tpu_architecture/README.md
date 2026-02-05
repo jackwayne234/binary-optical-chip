@@ -150,13 +150,13 @@ This section describes how we can dramatically increase compute density by lever
 
 When you take the logarithm of a number, multiplication becomes addition. Take the log again (log-log), and *exponentiation* becomes addition. Each "level" up the tower transforms a harder operation into simple add/subtract.
 
-| Level | Domain | What ADD/SUB means in linear | States per trit | Total encoding states |
-|-------|--------|------------------------------|-----------------|----------------------|
-| 0 | Linear | Add/Subtract | 3 | 3 |
-| 1 | Log | Multiply/Divide | 3 | 3 |
-| 2 | Log-Log | Power/Root | 3 | 3^3 = 27 |
-| 3 | Log-Log-Log | Power Tower | 3 | 3^3^3 = 7,625,597,484,987 |
-| 4 | Log^4 | Hyper-4 | 3 | 3^3^3^3 = incomprehensibly large |
+| Level | Domain | What ADD/SUB means in linear | Physical States | Trit Represents |
+|-------|--------|------------------------------|-----------------|-----------------|
+| 0 | Linear | Add/Subtract | 3 | trit |
+| 1 | Log | Multiply/Divide | 3 | trit |
+| 2 | Log-Log | Power/Root | 3 | trit³ |
+| 3 | Log-Log-Log | Power Tower | 3 | trit^(3^3) |
+| 4 | Log^4 | Hyper-4 | 3 | trit^(3^3^3) |
 
 The pattern: operations get "easier" at each level (harder ops become add/sub), but levels alternate between being add/sub friendly and requiring actual mul/div hardware.
 
@@ -223,7 +223,8 @@ This is the beautiful part. After scaling:
 | PE internals | Add/subtract circuits | Add/subtract circuits (same) |
 | Optical paths | Unchanged | Unchanged |
 | Clock rate | 617 MHz | 617 MHz (same) |
-| **IOC** | Encodes/decodes 3 states | Encodes/decodes 27+ states |
+| Physical states | 3 | 3 (same) |
+| **IOC** | Interprets trit as trit | Interprets trit as trit³ (or higher) |
 
 The PEs are completely oblivious to the tower level. They just see optical signals and add/subtract them. All the intelligence is in the **IOC (Integrated Optical Converter)**, which:
 
@@ -236,7 +237,7 @@ The PEs are completely oblivious to the tower level. They just see optical signa
 The IOC conversion time is approximately **6.5ns** - negligible compared to compute cycles. This means:
 
 - Using bigger number representations (tower encodings) is essentially **free**
-- The throughput multiplier scales with states: 27 states = 9× throughput (27/3)
+- The throughput multiplier comes from each operation handling larger values (trit³ = 9× the value range)
 - The practical limit is how many tower levels the IOC can accurately encode/decode
 
 **Open questions for future work:**
@@ -271,16 +272,17 @@ The optical compute is effectively unlimited - it just does add/subtract regardl
 
 ### Performance Impact
 
-With 3^3 = 27 state encoding (scaled configuration):
+With 3^3 scaling (trit represents trit³):
 
-| Metric | Base (3 states) | Scaled (27 states) | Multiplier |
-|--------|-----------------|-------------------|------------|
-| States per trit | 3 | 27 | 9× |
+| Metric | Base | Scaled (3^3) | Multiplier |
+|--------|------|--------------|------------|
+| Physical states | 3 | 3 (unchanged) | — |
+| Trit represents | trit | trit³ | 9× value range |
 | 27×27 array | 65 TFLOPS | 583 TFLOPS | 9× |
 | 243×243 array | 5.2 PFLOPS | 47 PFLOPS | 9× |
 | 960×960 array | 82 PFLOPS | 738 PFLOPS | 9× |
 
-The 9× comes directly from the state ratio: 27/3 = 9. Same hardware, same power, 9× the throughput.
+The 9× comes from each trit representing 9× the mathematical value (trit³ vs trit). Same hardware, same 3 physical states, same power - but each operation processes larger numbers.
 
 ### Summary
 

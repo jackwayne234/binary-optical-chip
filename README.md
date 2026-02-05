@@ -38,10 +38,10 @@ This is a **Ternary Processing Unit (TPU)** - an AI accelerator optimized for pa
 
 **The asymmetry between ADD/SUB and MUL/DIV PEs:**
 
-| PE Type | Baseline | Scaled Mode | Tower Representation |
-|---------|----------|-------------|---------------------|
-| ADD/SUB | Level 0 (values) | Level 2 | 3^3 = 27 states |
-| MUL/DIV | Level 1 (exponents) | Level 3 | 3^3^3 = 7.6 trillion states |
+| PE Type | Baseline | Scaled Mode | Trit Represents |
+|---------|----------|-------------|-----------------|
+| ADD/SUB | Level 0 (values) | Level 2 | trit³ (3^3 range) |
+| MUL/DIV | Level 1 (exponents) | Level 3 | trit^(3^3) (3^3^3 range) |
 
 **Why MUL/DIV goes up 2 levels, not 1:**
 - Level 2 would require *actual* multiply/divide hardware (defeating the purpose)
@@ -55,11 +55,11 @@ This is a **Ternary Processing Unit (TPU)** - an AI accelerator optimized for pa
 - Bigger number representations cost nothing extra in the optical domain
 - The real limit is how many tower levels the IOC can handle
 
-**The scaling ladder:**
-- Level 0: 3 states (base trit)
-- Level 2: 3^3 = 27 states (9× throughput)
-- Level 3: 3^3^3 = 7.6T states (for MUL/DIV)
-- Level 4: 3^3^3^3 ... and so on
+**The scaling ladder (still 3 physical states, IOC changes interpretation):**
+- Level 0: trit = trit (base)
+- Level 2: trit represents trit³ (9× value range for ADD/SUB)
+- Level 3: trit represents trit^(3^3) (for MUL/DIV)
+- Level 4: trit represents trit^(3^3^3) ... and so on
 
 We could theoretically keep climbing (3^3^3^3, 3^3^3^3^3, etc.) until we hit IOC encoding limits. Each level up multiplies the representable range while the optical hardware stays identical.
 
