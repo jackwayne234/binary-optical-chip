@@ -2,8 +2,8 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18437600.svg)](https://doi.org/10.5281/zenodo.18437600)
 [![License: Code - MIT](https://img.shields.io/badge/License-Code%20MIT-blue.svg)](LICENSE)
-[![License: Docs - CC BY 4.0](https://img.shields.io/badge/License-Docs%20CC%20BY%204.0-lightgrey.svg)](LICENSE-CC-BY-4.0)
-[![License: Hardware - CERN OHL](https://img.shields.io/badge/License-Hardware%20CERN%20OHL-orange.svg)](LICENSE-CERN-OHL)
+[![License: Docs - CC BY 4.0](https://img.shields.io/badge/License-Docs%20CC%20BY%204.0-lightgrey.svg)](LICENSES/CC-BY-4.0.txt)
+[![License: Hardware - CERN OHL](https://img.shields.io/badge/License-Hardware%20CERN%20OHL-orange.svg)](LICENSES/CERN-OHL.txt)
 [![Status: Active](https://img.shields.io/badge/Status-Active%20Development-green.svg)]()
 [![Open Source](https://img.shields.io/badge/Open%20Source-Yes-brightgreen.svg)]()
 [![Contributions Welcome](https://img.shields.io/badge/Contributions-Welcome-brightgreen.svg)](CONTRIBUTING.md)
@@ -469,8 +469,8 @@ This project is fully open source with explicit licensing for all components:
 | Component | License | File |
 |-----------|---------|------|
 | **Software Code** | MIT License | [LICENSE](LICENSE) |
-| **Documentation & Papers** | CC BY 4.0 | [LICENSE-CC-BY-4.0](LICENSE-CC-BY-4.0) |
-| **Hardware Designs** | CERN OHL | [LICENSE-CERN-OHL](LICENSE-CERN-OHL) |
+| **Documentation & Papers** | CC BY 4.0 | [LICENSES/CC-BY-4.0.txt](LICENSES/CC-BY-4.0.txt) |
+| **Hardware Designs** | CERN OHL | [LICENSES/CERN-OHL.txt](LICENSES/CERN-OHL.txt) |
 
 All source files include license headers. See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community standards.
 
