@@ -41,13 +41,20 @@ def run_sfg_simulation():
     # In real units, dependent on E-field scale. Here we pick a value to show effect.
     chi2_val = 0.5         
     
-    # Sources
-    # Signal A (e.g., Telecom)
-    wvl_a = 1.55            
+    # Sources - NEW ternary wavelength triplet (collision-free)
+    # RED (-1):   1550 nm (C-band telecom)
+    # GREEN (0):  1310 nm (O-band telecom)
+    # BLUE (+1):  1064 nm (Nd:YAG standard)
+    #
+    # OLD wavelengths (1550/1216/1000 nm) had collision: GREEN+GREEN = RED+BLUE = 608nm
+    # NEW wavelengths produce 6 unique SFG outputs with minimum 24nm spacing
+
+    # Signal A: RED (C-band telecom)
+    wvl_a = 1.55
     freq_a = 1 / wvl_a
-    
-    # Signal B (e.g., ~1um)
-    wvl_b = 1.0            
+
+    # Signal B: GREEN (O-band telecom)
+    wvl_b = 1.31
     freq_b = 1 / wvl_b
     
     # Target Sum Frequency
