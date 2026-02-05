@@ -12,6 +12,20 @@
 
 ---
 
+## Architecture: From CPU to TPU
+
+This isn't a general-purpose CPU replacement - it's a **Ternary Processing Unit (TPU)** optimized for parallel matrix operations, like NVIDIA's tensor cores but optical.
+
+| Architecture | Strength | Use Case |
+|--------------|----------|----------|
+| CPU | Sequential logic, branching | General computing |
+| GPU/TPU | Parallel matrix math | AI training/inference |
+| **Optical TPU** | Parallel matrix math, passive logic | AI acceleration at 50-100× efficiency |
+
+**Why this matters:** The comparisons below are against NVIDIA's B200 and Frontier because that's the comparable workload - massively parallel tensor operations for AI. The optical architecture excels at exactly what AI compute demands: matrix multiplies across thousands of parallel channels.
+
+---
+
 ## Validated Performance (February 2026)
 
 **27×27 Array FDTD Simulation: PASSED** - 2.4% clock skew (threshold: 5%)
