@@ -31,7 +31,7 @@ This is a **Ternary Processing Unit (TPU)** - an AI accelerator optimized for pa
 | **Base mode** | 82 PFLOPS / chip | **33×** faster | 15 chips = Frontier |
 | **3^3 mode** | 738 PFLOPS / chip | **295×** faster | **2 chips = Frontier** |
 
-*3^3 mode: Same hardware, same 3 states. The IOC reinterprets each trit as trit³ in log-log domain (where exponentiation becomes addition). Result: 9× more compute per cycle with zero hardware changes.*
+*3^3 mode: Same hardware, same 3 states. The IOC reinterprets each trit as trit³ in log-log domain. In this domain, adding and subtracting exponents is the same as multiplying and dividing the original numbers - so the hardware simplifies to just add/subtract operations. No multiply or divide circuits needed. Result: 9× more compute per cycle with simpler, faster hardware.*
 
 The optical approach eliminates the heat and power constraints that limit electronic accelerators, while delivering raw performance that exceeds anything silicon can achieve.
 
