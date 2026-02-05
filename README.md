@@ -108,6 +108,10 @@ Total: 3 clocks = ~4.9ns for 3×3 | ~131ns for 81×81
 
 Each PE operates on **6 stackable wavelength triplets** = 144 WDM channels, enabling massive parallelism without physical routing complexity.
 
+**Instead of building 6 separate chips, we run 6 independent computations through the same physical hardware simultaneously.** Each wavelength triplet operates in its own "lane" - the photons don't interfere with each other because they're different colors.
+
+This isn't experimental - it's **mature telecom technology**. The fiber optic industry has used Wavelength Division Multiplexing (WDM) for decades to send 80+ channels down a single fiber. We're just repurposing it for compute instead of communication. The components (multiplexers, demultiplexers, filters) are commodity hardware you can buy off the shelf.
+
 ---
 
 ## Performance
