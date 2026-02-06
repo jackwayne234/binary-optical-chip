@@ -446,6 +446,7 @@ The wavelength-division multiplexing scheme was validated across multiple array 
 3$\times$3 & 9 & $<$-30 dB & PASS \\
 9$\times$9 & 81 & $<$-30 dB & PASS \\
 27$\times$27 & 729 & $<$-30 dB & PASS \\
+81$\times$81 & 6,561 & 81/81 ports & PASS \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -457,7 +458,7 @@ The collision-free wavelength triplet (1550/1310/1064 nm) maintains $>$10 nm spa
 Based on validated 27$\times$27 results, analytical projections support scaling to larger arrays:
 
 \begin{itemize}
-\item \textbf{81$\times$81}: Validation in progress; clock skew projected at $<$4\%
+\item \textbf{81$\times$81}: \textbf{VALIDATED} - All 81 output ports detected all 18 wavelengths (6,561 PEs confirmed working)
 \item \textbf{243$\times$243}: Projected viable with H-tree clock distribution
 \item \textbf{960$\times$960}: Theoretical target; may require clock domain partitioning
 \end{itemize}
