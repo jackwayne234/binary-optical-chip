@@ -344,3 +344,32 @@ Google's TPU and NVIDIA's Tensor Cores popularized systolic arrays in AI, but th
 Kung & Leiserson's work showed how data can flow rhythmically through a mesh of simple processing elements, like blood through a circulatory system (hence "systolic"). This is exactly what we're doing optically - their architecture, our medium.
 
 Giving proper attribution strengthens the paper. Shows we know the history, not just the current hype.
+
+---
+
+## Paper Finalization for Zenodo
+
+### Ongoing Work Subsection Added
+
+Added an "Ongoing Work" subsection to the paper documenting current validation efforts.
+
+### Key Points
+
+- **3-tier optical RAM validation is in progress** - The architecture is defined, validation is ongoing
+- Architecture has been specified and documented
+- Validation work continues to confirm the design
+
+### Final Citation Fix
+
+Fixed the final Google/NVIDIA reference in the conclusion to properly cite **Kung & Leiserson** for systolic arrays. The paper now gives credit where credit is due throughout, including the conclusion.
+
+### Paper Status
+
+**The paper is now ready for Zenodo publication.**
+
+All major sections complete:
+- Architecture breakthrough (weight streaming from optical RAM)
+- Cybersecurity benefits (with appropriate limitations)
+- Simulation validation results
+- Proper academic citations throughout
+- Ongoing work acknowledgment

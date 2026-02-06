@@ -6,9 +6,9 @@
 ## What We're Doing
 Reviewing the N-Radix paper for Zenodo publication. Reading through together, making changes as we go.
 
-## Review Status: COMPLETE - Ready for Zenodo
+## Review Status: READY FOR PUBLICATION
 
-All sections reviewed and validated. Paper is ready for publication.
+Paper is complete and ready for Zenodo upload.
 
 ### Final Changes (Feb 5, 2026)
 - **Softened cybersecurity claims** - Optical core is inherently secure, but interfaces need traditional security measures
@@ -16,6 +16,11 @@ All sections reviewed and validated. Paper is ready for publication.
 - **Removed Google/NVIDIA references** from systolic array section - more neutral framing
 - **Added Kung & Leiserson (1979) citation** for systolic arrays - proper academic attribution
 - **Overall:** More honest and academically proper. Claims are now well-supported and appropriately hedged.
+
+### Final Additions (Feb 5, 2026)
+- **Added "Ongoing Work" subsection** - Notes that 3-tier optical RAM validation is in progress
+- **Fixed last Google/NVIDIA reference in conclusion** - Removed remaining corporate comparison
+- **Paper is COMPLETE** - All sections reviewed, all changes applied, ready for Zenodo
 
 ---
 
@@ -130,4 +135,4 @@ The abstract now includes:
 
 ---
 *Last updated: 2026-02-05*
-*Status: REVIEW COMPLETE - Ready for Zenodo publication*
+*Status: READY FOR PUBLICATION - Upload to Zenodo*
