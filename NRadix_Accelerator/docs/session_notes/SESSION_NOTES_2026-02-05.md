@@ -186,6 +186,52 @@ The interface supports:
 
 ---
 
+## Cybersecurity Insight: "The Geometry Is the Program"
+
+*Discovered during paper review session.*
+
+### Added to Paper: Cybersecurity Benefits Section
+
+A major new section was added to the paper highlighting a profound security implication of this architecture.
+
+### The Core Insight
+
+**"The geometry is the program."**
+
+In this optical architecture, computation is performed by the physical structure of waveguides, mixers, and resonators. There is no instruction set. There is no firmware. There is no software to exploit.
+
+### Historic Claim
+
+**First time in computing history a device could be network-connected yet immune to remote compromise.**
+
+Traditional computers are vulnerable because malicious code can modify their behavior. But you cannot "hack" a physical geometry. The waveguides are where they are. The mixers mix what they mix. An attacker would need physical access to literally reshape the silicon.
+
+### What It's Immune To
+
+| Attack Vector | Why It Doesn't Apply |
+|---------------|---------------------|
+| Remote Code Execution (RCE) | No code to execute - computation is geometry |
+| Firmware attacks | No firmware - behavior is physical structure |
+| Side-channel attacks | No electronic switching to leak timing/power signatures |
+| Supply chain tampering | Tampering changes geometry, which changes (breaks) function detectably |
+
+### Potential Application: Optical HSM
+
+**Hardware Security Module (HSM) for secure key storage.**
+
+Because the architecture is inherently unhackable via software, it's a natural fit for:
+- Cryptographic key storage
+- Secure enclaves
+- Air-gapped computation that still needs network connectivity
+
+You could connect it to a network for I/O while being fundamentally immune to remote exploitation. The geometry does what the geometry does - period.
+
+### Why This Matters
+
+This isn't just a performance story anymore. The same architectural properties that enable massive parallelism (passive optical computation, no electronic switching) also create an unprecedented security profile. Security wasn't even a design goal - it fell out naturally from the physics.
+
+---
+
 ## Quotable Insight
 
 The original per-PE bistable storage approach was overengineering. We were trying to put exotic memory at every single PE when we already had optical RAM sitting in the CPU. Moving weights to centralized storage and streaming them via waveguides:

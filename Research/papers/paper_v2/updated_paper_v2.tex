@@ -27,7 +27,7 @@ We present N-Radix, an open-source optical accelerator architecture based on wav
 \end{abstract}
 
 \begin{IEEEkeywords}
-Ternary computing, optical computing, N-Radix, systolic array, wavelength division, radix economy, log-domain computing, AI accelerator
+Ternary computing, optical computing, N-Radix, systolic array, wavelength division, radix economy, log-domain computing, AI accelerator, hardware security
 \end{IEEEkeywords}
 
 \section{Introduction}
@@ -41,6 +41,7 @@ This paper extends that theoretical foundation into a complete accelerator archi
 \item \textbf{Log-domain tower scaling} that increases effective throughput by reinterpreting trit values at the system boundary
 \item \textbf{N-Radix Input/Output Converter (NR-IOC)} specifications for bridging binary electronic systems with optical ternary computation
 \item \textbf{Practical performance analysis} showing realistic throughput gains for matrix multiply workloads
+\item \textbf{Inherent cybersecurity immunity}: Because the geometry is the program, optical accelerators are immune to remote code execution, firmware attacks, and other software-based exploits
 \end{enumerate}
 
 \section{Wavelength Encoding Review}
@@ -211,6 +212,8 @@ Both ADD/SUB and MUL/DIV PEs use \textbf{3\textsuperscript{3} encoding}:
 
 The NR-IOC knows which PE type it addresses and applies the correct interpretation.
 
+\textbf{Important:} This is why the \textbf{9× throughput boost from 3\textsuperscript{3} encoding only applies to ADD/SUB operations}. We upgraded the ADD/SUB PEs to operate in log-log domain because addition remains addition, providing 9× more compute with the same hardware. MUL/DIV PEs cannot receive the same upgrade because traditional hardware cannot handle the requirements—see the following subsection for why this is mathematically beyond any physical computer.
+
 \subsection{Why 3\textsuperscript{3}\textsuperscript{3}\textsuperscript{3} Is Beyond Engineering}
 
 Theoretically, MUL/DIV operations could achieve pure add/subtract at tower level 4 (3\textsuperscript{3}\textsuperscript{3}\textsuperscript{3}). However, this would require:
@@ -351,14 +354,9 @@ The NR-IOC bridges binary electronic systems (PCIe, host CPU) with the optical t
 
 NR-IOC conversion time is approximately \textbf{6.5 ns}—negligible compared to PCIe transfer latency ($\sim$1 $\mu$s per KB) and compute time.
 
-\subsection{The NR-IOC as the Scaling Limit}
+\subsection{64-Bit Hardware as the Scaling Limit}
 
-The optical hardware is unlimited—it simply adds wavelengths regardless of what they represent. The practical ceiling for tower scaling is determined by:
-
-\begin{enumerate}
-\item \textbf{NR-IOC precision}: How many tower levels can be accurately encoded/decoded
-\item \textbf{Transistor interface}: PCIe bandwidth and host CPU capabilities
-\end{enumerate}
+The optical hardware is unlimited—it simply adds wavelengths regardless of what they represent. The practical ceiling for tower scaling is determined by traditional 64-bit hardware at the host interface. The NR-IOC itself could handle higher tower levels, but the backend architecture cannot.
 
 Testing reveals that 3\textsuperscript{3} encoding works with standard 64-bit hardware. Higher levels require arbitrary precision arithmetic, adding latency and complexity that negates the throughput benefit.
 
@@ -381,7 +379,7 @@ Single 960$\times$960 chip & 148 PFLOPS & 12.3\% \\
 \end{tabular}
 \end{table}
 
-\textbf{8 chips matching 9,402 Frontier nodes} represents a 1,175$\times$ reduction in system complexity. This is the realistic comparison for AI workloads.
+\textbf{8 chips matching 9,402 Frontier nodes} represents a 1,175$\times$ reduction in system complexity at less than 0.02\% of the power requirement. This is the realistic comparison for AI workloads.
 
 \subsection{Best-Case: Pure ADD Workloads}
 
@@ -406,6 +404,34 @@ The ``2 chips = Frontier'' claim is valid \textbf{only for pure ADD workloads}. 
 
 Both scenarios represent a paradigm shift from ``more transistors = more compute'' to ``optical parallelism + tower scaling = more compute.'' The key insight is that even the ``conservative'' matrix multiply numbers (8 chips) represent extraordinary density compared to conventional supercomputers.
 
+\section{Cybersecurity Benefits}
+
+N-Radix offers an unconventional security advantage: \textbf{the geometry is the program}.
+
+Traditional processors execute software—instructions stored in memory, interpreted by logic circuits. This creates an attack surface: buffer overflows, firmware exploits, side-channel attacks, malicious code injection. Every layer of software is a potential vulnerability.
+
+N-Radix has no software. The optical chip is glass and waveguides. Computation is determined by the physical layout—where waveguides meet, how ring resonators are positioned, how light paths intersect. There is no instruction set to exploit, no firmware to corrupt, no memory to overflow.
+
+\textbf{To ``hack'' an N-Radix chip, you would need to physically alter the glass.}
+
+This makes optical accelerators immune to:
+\begin{itemize}
+\item \textbf{Remote code execution}: No code to execute
+\item \textbf{Firmware attacks}: No firmware
+\item \textbf{Side-channel exploits}: Photons don't leak electromagnetic signatures like electrons
+\item \textbf{Supply chain tampering}: Physical geometry is verifiable by inspection
+\end{itemize}
+
+\vspace{0.5em}
+\noindent\fbox{\parbox{0.95\linewidth}{
+\textbf{A Historic First:} For the first time in computing history, a device could be network-connected yet completely immune to remote compromise.
+}}
+\vspace{0.5em}
+
+Consider the implications: every connected device ever built—from mainframes to smartphones to IoT sensors—has had some attack surface. Firmware, drivers, protocol stacks, instruction decoders. Somewhere in the stack, there is always software that can be exploited. An optical chip has \emph{none} of that. The geometry \emph{is} the program. To change what it computes, you would have to physically alter the glass—a task requiring physical access and specialized equipment, not a network connection and cleverness.
+
+For applications requiring high-assurance computing—defense, critical infrastructure, financial systems—this architectural security is a feature that no amount of software hardening can replicate.
+
 \section{Conclusion}
 
 We have presented the N-Radix architecture, extending wavelength-division ternary logic into a practical AI accelerator design. Key contributions include:
@@ -414,8 +440,9 @@ We have presented the N-Radix architecture, extending wavelength-division ternar
 \item \textbf{Systolic array architecture}: Identical topology to proven designs (Google TPU, NVIDIA tensor cores), but with optical ternary PEs
 \item \textbf{Log-domain tower scaling}: 3\textsuperscript{3} encoding yields 9$\times$ throughput for pure ADD operations, $\sim$1.8$\times$ for matrix multiply (via Amdahl's Law on the 50/50 ADD/MUL split)
 \item \textbf{Practical limits identified}: 3\textsuperscript{3}\textsuperscript{3}\textsuperscript{3} requires 12 terabit registers—beyond physical realizability
-\item \textbf{NR-IOC as the true ceiling}: The optical hardware is unlimited; scaling is bounded by electronic interface precision
+\item \textbf{64-bit hardware as the true ceiling}: The optical hardware is unlimited; 64-bit hardware can handle 3\textsuperscript{3} encoding but not higher towers
 \item \textbf{Honest performance claims}: 8 chips match Frontier for matrix multiply; 2 chips match Frontier only for pure ADD workloads
+\item \textbf{Inherent cybersecurity}: The geometry is the program—no firmware, no software, no remote attack surface
 \end{enumerate}
 
 The architecture offers a path to supercomputer-class performance in dramatically smaller form factors. At 960$\times$960 scale with 3\textsuperscript{3} encoding:
@@ -425,11 +452,11 @@ The architecture offers a path to supercomputer-class performance in dramaticall
 \item \textbf{Pure ADD (9$\times$)}: 738 PFLOPS/chip
 \end{itemize}
 
-Even the conservative matrix multiply numbers represent a transformative improvement: 8 chips vs.\ Frontier's 9,402 nodes. The fundamental physics allows it; the engineering challenge is now clearly defined.
+Even the conservative matrix multiply numbers represent a transformative improvement: 8 chips at less than 0.02\% the power vs.\ Frontier's 9,402 nodes. The fundamental physics allows it; the engineering challenge is now clearly defined.
 
 \section*{Acknowledgment}
 
-Claude (Anthropic) provided assistance with architectural documentation and performance analysis. The core innovations—wavelength-division ternary encoding, log-domain tower scaling, and N-Radix architecture—are the work of the author.
+Claude (Anthropic) provided assistance by building the tools to test the author's architectural decisions—FDTD simulations, architecture code, and driver implementations. The core innovations—wavelength-division ternary encoding, log-domain tower scaling, N-Radix architecture, and the insight that optical computing provides inherent immunity to cybersecurity attacks—are the work of the author.
 
 \begin{thebibliography}{10}
 

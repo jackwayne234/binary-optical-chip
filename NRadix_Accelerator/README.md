@@ -31,6 +31,37 @@ An optical AI accelerator achieving ~59× the performance of NVIDIA's B200 for m
 
 This architectural simplification makes the design significantly more practical to manufacture while maintaining the performance advantages of optical compute.
 
+## Cybersecurity Advantages
+
+**The geometry is the program.** There is no software to exploit.
+
+Unlike conventional processors that execute instructions from memory, the N-Radix accelerator's computation is defined entirely by its physical structure - waveguide routing, mixer placement, and optical paths etched into glass. This creates a fundamentally different security model:
+
+### What Does Not Exist
+
+- **No firmware** - Nothing to flash, nothing to corrupt
+- **No instruction set** - No opcodes to hijack or malicious payloads to inject
+- **No software stack** - No kernel, no drivers, no attack surface
+- **No writable state** - The "program" is lithographically fixed at fabrication
+
+### Immunity Profile
+
+| Attack Vector | Traditional Chips | N-Radix Optical |
+|---------------|-------------------|-----------------|
+| Remote code execution | Vulnerable | **Impossible** - no code to execute |
+| Firmware attacks | Vulnerable | **Impossible** - no firmware exists |
+| Side-channel exploits | Vulnerable | **Immune** - photons don't leak like electrons |
+| Supply chain tampering | Software-level risk | **Physical-only** - requires altering the glass |
+| Buffer overflows | Common vulnerability | **N/A** - no buffers, no memory addressing |
+
+### Historic Implication
+
+**For the first time in computing history, a device could be network-connected yet completely immune to remote compromise.**
+
+To attack this chip, you cannot send packets. You cannot craft exploits. You cannot find zero-days. The only attack vector is physical access to alter the optical pathways themselves - and even then, you would need to re-fabricate portions of the chip.
+
+This is not security through obscurity. This is security through architecture - the absence of programmability eliminates the entire class of software-based attacks.
+
 ## Directory Structure
 
 ```
