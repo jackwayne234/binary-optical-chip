@@ -141,6 +141,7 @@ The H-tree clock distribution network delivers the 617 MHz Kerr clock to all PEs
 | 3×3 | <-30 dB | -30 dB | **PASS** |
 | 9×9 | <-30 dB | -30 dB | **PASS** |
 | 27×27 | <-30 dB | -30 dB | **PASS** |
+| 81×81 | <-30 dB | -30 dB | **PASS** |
 
 All array sizes maintain better than -30 dB isolation between WDM channels, preventing signal interference during parallel computation.
 
