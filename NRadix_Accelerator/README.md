@@ -120,7 +120,7 @@ python -c "from nradix import NRadixSimulator; sim = NRadixSimulator(27)"
 - [x] 3×3 WDM array - PASSED
 - [x] 9×9 WDM array - PASSED
 - [x] 27×27 WDM array - PASSED
-- [ ] 81×81 WDM array - Queued
+- [x] 81×81 WDM array - PASSED
 
 ## Simulation Validation
 
