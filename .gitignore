@@ -1,3 +1,6 @@
+# Private — never push to GitHub
+war_room/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -72,6 +75,7 @@ logs/
 # Virtual environments
 .mamba_env/
 .venv/
+.venv_*/
 
 # Build packs and large binaries
 *.zip
@@ -81,6 +85,10 @@ logs/
 # OS files
 .DS_Store
 Thumbs.db
+*.desktop
+
+# Large binaries / papers (on Zenodo)
+*.pdf
 
 # Local working files
 ebay_*.html
