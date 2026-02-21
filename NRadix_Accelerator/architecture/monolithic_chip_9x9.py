@@ -91,11 +91,22 @@ N_LINBO3 = 2.2                # Refractive index
 C_SPEED_UM_PS = 299.792       # μm/ps — speed of light
 V_GROUP_UM_PS = C_SPEED_UM_PS / N_LINBO3  # ~136.3 μm/ps group velocity
 
-# PE dimensions
-PE_WIDTH = 50.0               # μm
-PE_HEIGHT = 50.0              # μm
+# PE dimensions (expanded for 6-lane parallel PPLN mixer)
+PE_WIDTH = 55.0               # μm (was 50, expanded for 6-lane mixer)
+PE_HEIGHT = 55.0              # μm (was 50, expanded for 6-lane mixer)
 PE_SPACING = 5.0              # μm between PEs
-PE_PITCH = PE_WIDTH + PE_SPACING  # 55 μm center-to-center
+PE_PITCH = PE_WIDTH + PE_SPACING  # 60 μm center-to-center
+
+# 6-lane PPLN mixer QPM periods (μm) — B+B case for each triplet
+TRIPLET_QPM_PERIODS = {
+    1: 3.78,   # T1: 1000/1020/1040 nm
+    2: 4.62,   # T2: 1060/1080/1100 nm
+    3: 5.57,   # T3: 1120/1140/1160 nm
+    4: 6.63,   # T4: 1180/1200/1220 nm
+    5: 7.82,   # T5: 1240/1260/1280 nm
+    6: 9.13,   # T6: 1300/1320/1340 nm
+}
+N_LANES = 6  # Number of parallel WDM lanes
 
 # Array
 N_ROWS = 9
@@ -154,11 +165,14 @@ def monolithic_pe(row: int = 0, col: int = 0) -> Component:
     Simplified streaming PE for monolithic chip.
 
     Passive components only:
-    - SFG mixer (PPLN region)
+    - WDM demux (AWG, splits 6 triplets into dedicated lanes)
+    - 6 PPLN SFG mixers (each QPM-tuned to its triplet)
+    - WDM mux (AWG, recombines 6 SFG output bands)
     - Waveguide routing (input/output/weight)
     - Accumulator loop
 
     No clock input needed — timing via path-length matching.
+    Chip is fully passive — all 6 mixers are fixed photonic geometry.
     """
     c = gf.Component(f"M_PE_{row}_{col}_{_uid()}")
 
@@ -167,72 +181,132 @@ def monolithic_pe(row: int = 0, col: int = 0) -> Component:
         (0, 0), (PE_WIDTH, 0), (PE_WIDTH, PE_HEIGHT), (0, PE_HEIGHT)
     ], layer=LAYER_REGION)
 
-    # SFG mixer core (PPLN — the computation)
-    mixer_x, mixer_y = 12, 15
-    mixer_w, mixer_h = 26, 20
+    # --- WDM Demux (AWG 1×6) — splits 6 triplets into dedicated lanes ---
+    demux_x, demux_y = 8, 35
+    demux_w, demux_h = 10, 10
     c.add_polygon([
-        (mixer_x, mixer_y),
-        (mixer_x + mixer_w, mixer_y),
-        (mixer_x + mixer_w, mixer_y + mixer_h),
-        (mixer_x, mixer_y + mixer_h)
-    ], layer=LAYER_CHI2_SFG)
+        (demux_x, demux_y),
+        (demux_x + demux_w, demux_y),
+        (demux_x + demux_w, demux_y + demux_h),
+        (demux_x, demux_y + demux_h)
+    ], layer=LAYER_AWG)
+    c.add_label("DEMUX", position=(demux_x + demux_w/2, demux_y + demux_h + 1), layer=LAYER_TEXT)
 
-    # PPLN poling stripes (periodic domain inversion electrodes)
-    # Separate datatype (2,1) from mixer region (2,0) for DRC clarity
-    for i in range(int(mixer_w / 3)):
-        x = mixer_x + i * 3 + 0.5
+    # --- 6 Parallel PPLN SFG Mixers ---
+    mixer_region_x = 8
+    mixer_region_y = 12
+    lane_width = 4.0        # μm per mixer lane
+    lane_spacing = 1.5      # μm between lanes
+    mixer_h = 20.0          # μm mixer length (PPLN interaction region)
+
+    for lane in range(N_LANES):
+        lane_x = mixer_region_x + lane * (lane_width + lane_spacing)
+        # PPLN mixer block
         c.add_polygon([
-            (x, mixer_y + 2), (x + 1.5, mixer_y + 2),
-            (x + 1.5, mixer_y + mixer_h - 2), (x, mixer_y + mixer_h - 2)
-        ], layer=LAYER_PPLN_STRIPES)
+            (lane_x, mixer_region_y),
+            (lane_x + lane_width, mixer_region_y),
+            (lane_x + lane_width, mixer_region_y + mixer_h),
+            (lane_x, mixer_region_y + mixer_h)
+        ], layer=LAYER_CHI2_SFG)
+
+        # PPLN poling stripes per lane (QPM period varies by triplet)
+        qpm = TRIPLET_QPM_PERIODS[lane + 1]
+        stripe_period = qpm  # Full period
+        stripe_w = qpm / 2.0  # Half-period domain
+        n_stripes = max(int(mixer_h / stripe_period), 1)
+        for s in range(n_stripes):
+            sy = mixer_region_y + s * stripe_period + 0.2
+            sh = min(stripe_w - 0.4, mixer_region_y + mixer_h - sy - 0.2)
+            if sh > 0.2:
+                c.add_polygon([
+                    (lane_x + 0.3, sy),
+                    (lane_x + lane_width - 0.3, sy),
+                    (lane_x + lane_width - 0.3, sy + sh),
+                    (lane_x + 0.3, sy + sh)
+                ], layer=LAYER_PPLN_STRIPES)
+
+        # Lane label
+        c.add_label(f"T{lane+1}", position=(lane_x + lane_width/2, mixer_region_y - 1), layer=LAYER_TEXT)
+
+    # --- WDM Mux (AWG 6×1) — recombines SFG outputs ---
+    mux_x, mux_y = 8, 2
+    mux_w, mux_h = 10, 8
+    c.add_polygon([
+        (mux_x, mux_y),
+        (mux_x + mux_w, mux_y),
+        (mux_x + mux_w, mux_y + mux_h),
+        (mux_x, mux_y + mux_h)
+    ], layer=LAYER_AWG)
+    c.add_label("MUX", position=(mux_x + mux_w/2, mux_y - 1), layer=LAYER_TEXT)
+
+    # Routing waveguides from demux to mixers (fan-out)
+    for lane in range(N_LANES):
+        lane_x = mixer_region_x + lane * (lane_width + lane_spacing) + lane_width / 2
+        c.add_polygon([
+            (lane_x - WAVEGUIDE_WIDTH/2, demux_y),
+            (lane_x + WAVEGUIDE_WIDTH/2, demux_y),
+            (lane_x + WAVEGUIDE_WIDTH/2, mixer_region_y + mixer_h),
+            (lane_x - WAVEGUIDE_WIDTH/2, mixer_region_y + mixer_h)
+        ], layer=LAYER_WAVEGUIDE)
+
+    # Routing waveguides from mixers to mux (fan-in)
+    for lane in range(N_LANES):
+        lane_x = mixer_region_x + lane * (lane_width + lane_spacing) + lane_width / 2
+        c.add_polygon([
+            (lane_x - WAVEGUIDE_WIDTH/2, mux_y + mux_h),
+            (lane_x + WAVEGUIDE_WIDTH/2, mux_y + mux_h),
+            (lane_x + WAVEGUIDE_WIDTH/2, mixer_region_y),
+            (lane_x - WAVEGUIDE_WIDTH/2, mixer_region_y)
+        ], layer=LAYER_WAVEGUIDE)
 
     # Accumulator loop (recirculating delay)
-    acc_x = 40
+    acc_x = 44
     acc_y = 8
     c.add_polygon([
         (acc_x, acc_y), (acc_x + 8, acc_y),
         (acc_x + 8, acc_y + 12), (acc_x, acc_y + 12)
     ], layer=LAYER_WAVEGUIDE)
 
-    # Horizontal input waveguide (activation from left)
+    # Horizontal input waveguide (activation from left → demux)
     c.add_polygon([
         (0, PE_HEIGHT/2 - WAVEGUIDE_WIDTH/2),
-        (mixer_x, PE_HEIGHT/2 - WAVEGUIDE_WIDTH/2),
-        (mixer_x, PE_HEIGHT/2 + WAVEGUIDE_WIDTH/2),
+        (demux_x, PE_HEIGHT/2 - WAVEGUIDE_WIDTH/2),
+        (demux_x, PE_HEIGHT/2 + WAVEGUIDE_WIDTH/2),
         (0, PE_HEIGHT/2 + WAVEGUIDE_WIDTH/2)
     ], layer=LAYER_WAVEGUIDE)
 
-    # Horizontal output waveguide (activation passthrough to right)
+    # Horizontal output waveguide (mux → activation passthrough to right)
+    mixer_end_x = mixer_region_x + N_LANES * (lane_width + lane_spacing)
     c.add_polygon([
-        (mixer_x + mixer_w, PE_HEIGHT/2 - WAVEGUIDE_WIDTH/2),
+        (mixer_end_x, PE_HEIGHT/2 - WAVEGUIDE_WIDTH/2),
         (PE_WIDTH, PE_HEIGHT/2 - WAVEGUIDE_WIDTH/2),
         (PE_WIDTH, PE_HEIGHT/2 + WAVEGUIDE_WIDTH/2),
-        (mixer_x + mixer_w, PE_HEIGHT/2 + WAVEGUIDE_WIDTH/2)
+        (mixer_end_x, PE_HEIGHT/2 + WAVEGUIDE_WIDTH/2)
     ], layer=LAYER_WAVEGUIDE)
 
     # Vertical input (partial sum from above)
     c.add_polygon([
         (PE_WIDTH/2 - WAVEGUIDE_WIDTH/2, PE_HEIGHT),
         (PE_WIDTH/2 + WAVEGUIDE_WIDTH/2, PE_HEIGHT),
-        (PE_WIDTH/2 + WAVEGUIDE_WIDTH/2, mixer_y + mixer_h),
-        (PE_WIDTH/2 - WAVEGUIDE_WIDTH/2, mixer_y + mixer_h)
+        (PE_WIDTH/2 + WAVEGUIDE_WIDTH/2, demux_y + demux_h),
+        (PE_WIDTH/2 - WAVEGUIDE_WIDTH/2, demux_y + demux_h)
     ], layer=LAYER_CARRY)
 
     # Vertical output (partial sum to below)
     c.add_polygon([
-        (PE_WIDTH/2 - WAVEGUIDE_WIDTH/2, mixer_y),
-        (PE_WIDTH/2 + WAVEGUIDE_WIDTH/2, mixer_y),
+        (PE_WIDTH/2 - WAVEGUIDE_WIDTH/2, mux_y),
+        (PE_WIDTH/2 + WAVEGUIDE_WIDTH/2, mux_y),
         (PE_WIDTH/2 + WAVEGUIDE_WIDTH/2, 0),
         (PE_WIDTH/2 - WAVEGUIDE_WIDTH/2, 0)
     ], layer=LAYER_CARRY)
 
-    # Weight input from top (streaming from optical RAM)
-    weight_x = PE_WIDTH - 12
+    # Weight input from top (streaming from NR-IOC, 6 triplets multiplexed)
+    weight_x = PE_WIDTH - 8
     c.add_polygon([
         (weight_x - WAVEGUIDE_WIDTH/2, PE_HEIGHT),
         (weight_x + WAVEGUIDE_WIDTH/2, PE_HEIGHT),
-        (weight_x + WAVEGUIDE_WIDTH/2, mixer_y + mixer_h),
-        (weight_x - WAVEGUIDE_WIDTH/2, mixer_y + mixer_h)
+        (weight_x + WAVEGUIDE_WIDTH/2, demux_y + demux_h),
+        (weight_x - WAVEGUIDE_WIDTH/2, demux_y + demux_h)
     ], layer=LAYER_WEIGHT)
 
     # Ports

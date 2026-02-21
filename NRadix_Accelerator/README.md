@@ -8,10 +8,12 @@ An optical AI accelerator achieving ~59× the performance of NVIDIA's B200 for m
 
 ### Design Principles
 
-1. **Simplified PEs**: Each processing element contains only:
-   - SFG mixer (sum-frequency generation for multiply)
+1. **6-Lane Parallel PEs**: Each processing element contains:
+   - WDM demux (AWG, splits 6 triplets into dedicated lanes)
+   - 6 PPLN SFG mixers (each QPM-tuned to its wavelength triplet)
+   - WDM mux (AWG, recombines outputs)
    - Waveguide routing (input/output paths)
-   - That's it. No local memory, no complex control logic.
+   - That's it. No local memory, no complex control logic. Fully passive.
 
 2. **Unified Optical Memory**: The CPU's 3-tier optical RAM serves dual purpose:
    - Standard CPU operations (when running CPU workloads)
@@ -23,7 +25,7 @@ An optical AI accelerator achieving ~59× the performance of NVIDIA's B200 for m
 
 | Aspect | Traditional (per-PE storage) | Streamed Design |
 |--------|------------------------------|-----------------|
-| PE Complexity | Memory + compute + control | SFG mixer + routing only |
+| PE Complexity | Memory + compute + control | 6 SFG mixers + demux/mux + routing |
 | Fabrication Yield | Lower (more components) | Higher (simpler PEs) |
 | Power | Per-PE memory leakage | Centralized, amortized |
 | Flexibility | Fixed weight capacity | Limited only by optical RAM |
@@ -108,8 +110,11 @@ python -c "from nradix import NRadixSimulator; sim = NRadixSimulator(27)"
 |--------|-------|
 | Array Sizes | 27×27 (729 PEs), 81×81 (6,561 PEs) |
 | Clock | 617 MHz (Kerr self-pulsing) |
-| WDM Channels | 6 triplets (18 wavelengths) |
-| Performance | ~59× B200 (matrix multiply) |
+| WDM Channels | 6 triplets (18 wavelengths), 6 parallel lanes per PE |
+| PE Architecture | WDM demux → 6 dedicated PPLN mixers → WDM mux |
+| PE Size | ~55 × 55 μm (monolithic, fully passive) |
+| Performance (single lane) | ~59× B200 (matrix multiply) |
+| Performance (6 lanes) | ~354× B200 (matrix multiply) |
 
 ## Documentation
 
@@ -149,17 +154,20 @@ The H-tree clock distribution network delivers the 617 MHz Kerr clock to all PEs
 
 All array sizes maintain better than -30 dB isolation between WDM channels, preventing signal interference during parallel computation.
 
-### Collision-Free Wavelength Triplet
+### Collision-Free Wavelength Triplets
 
-The ternary encoding uses three wavelengths with sufficient spacing to avoid SFG mixer collisions:
+Six wavelength triplets, each with 20nm internal spacing and 60nm inter-triplet spacing. Each triplet has a dedicated PPLN mixer with QPM tuned to its wavelengths:
 
-| Trit Value | Wavelength | Spacing to Next |
-|------------|------------|-----------------|
-| -1 | 1550 nm | 240 nm |
-| 0 | 1310 nm | 246 nm |
-| +1 | 1064 nm | - |
+| Triplet | λ₋₁ (nm) | λ₀ (nm) | λ₊₁ (nm) | SFG Output Band (nm) |
+|---------|-----------|---------|-----------|----------------------|
+| T1 | 1040 | 1020 | 1000 | 500–520 |
+| T2 | 1100 | 1080 | 1060 | 530–550 |
+| T3 | 1160 | 1140 | 1120 | 560–580 |
+| T4 | 1220 | 1200 | 1180 | 590–610 |
+| T5 | 1280 | 1260 | 1240 | 620–640 |
+| T6 | 1340 | 1320 | 1300 | 650–670 |
 
-All wavelengths maintain >10 nm spacing (actual: >240 nm), ensuring no frequency collisions during sum-frequency generation operations.
+All 18 wavelengths propagate through shared waveguides without crosstalk (validated via FDTD). Each PE's WDM demux splits triplets into dedicated PPLN mixers for computation, then recombines via WDM mux. No cross-triplet SFG collisions possible since each mixer only sees its own triplet.
 
 ### Key Insight
 

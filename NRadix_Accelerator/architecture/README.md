@@ -79,10 +79,79 @@ Six wavelength triplets were tested, each maintaining 20nm spacing to avoid SFG 
 
 **6× parallel computation through same physical chip is physics-validated.**
 
-This means:
-- A single 960×960 physical array can operate as six 960×960 virtual arrays in parallel
-- No additional silicon area required for 6× throughput increase
-- Each triplet operates a complete, independent ternary computation
+Waveguide routing supports all 6 triplets simultaneously without crosstalk. However, the nonlinear SFG mixer (PPLN) requires wavelength-specific quasi-phase-matching (QPM), meaning a single mixer cannot process all 6 triplets. The solution: **6 dedicated PPLN mixers per PE**, each with QPM tuned to its triplet.
+
+### 6-Lane Parallel Mixer Architecture
+
+Each PE contains a WDM demux → 6 parallel PPLN mixers → WDM mux:
+
+```
+  Activation in (6 triplets multiplexed on shared waveguide)
+        │
+   ┌────┴────┐
+   │ WDM     │  ← 1×6 AWG Demux (splits by triplet wavelength)
+   │ DEMUX   │
+   └─┬─┬─┬─┬─┬─┬─┘
+     │ │ │ │ │ │    6 parallel lanes
+     ▼ ▼ ▼ ▼ ▼ ▼
+   ┌───┐┌───┐┌───┐┌───┐┌───┐┌───┐
+   │ M1││ M2││ M3││ M4││ M5││ M6│  ← 6 PPLN mixers
+   │3.8││4.6││5.6││6.6││7.8││9.1│     QPM period (μm)
+   │ μm││ μm││ μm││ μm││ μm││ μm│
+   └─┬─┘└─┬─┘└─┬─┘└─┬─┘└─┬─┘└─┬─┘
+     │ │ │ │ │ │
+     ▼ ▼ ▼ ▼ ▼ ▼
+   ┌────┴────┐
+   │ WDM     │  ← 6×1 AWG Mux (recombines SFG outputs)
+   │  MUX    │
+   └────┬────┘
+        │
+        ▼ Combined output → Accumulator
+```
+
+**QPM periods per triplet (B+B case, full range 3.78–10.08 μm):**
+
+| Triplet | QPM B+B (μm) | QPM R+R (μm) | SFG Output Band (nm) |
+|---------|---------------|---------------|-----------------------|
+| T1 | 3.78 | 4.33 | 500–520 |
+| T2 | 4.62 | 5.24 | 530–550 |
+| T3 | 5.57 | 6.27 | 560–580 |
+| T4 | 6.63 | 7.41 | 590–610 |
+| T5 | 7.82 | 8.68 | 620–640 |
+| T6 | 9.13 | 10.08 | 650–670 |
+
+Each triplet's SFG outputs occupy a 20nm band with 10nm gaps between triplets — clean separation for AWG demuxing at the NR-IOC.
+
+**PE area impact:** ~1.5× the current mixer area (780 μm² vs 520 μm²). PE grows from 50×50 to ~55×55 μm. **Total array area increases ~20% for 6× throughput — a 5× improvement in performance per area.**
+
+**The chip remains fully passive.** The demux, mixers, and mux are all fixed photonic geometry. No active elements, no firmware, no per-PE storage. Weights stream from the NR-IOC on all 6 triplets simultaneously.
+
+### NR-IOC Data Flow (6-Lane Mode)
+
+The NR-IOC encodes each operation onto all 6 triplets in parallel:
+
+```
+NR-IOC encodes per clock cycle:
+  Lane 1 (T1): activation[0] × weight[0] → 1000/1020/1040 nm
+  Lane 2 (T2): activation[1] × weight[1] → 1060/1080/1100 nm
+  Lane 3 (T3): activation[2] × weight[2] → 1120/1140/1160 nm
+  Lane 4 (T4): activation[3] × weight[3] → 1180/1200/1220 nm
+  Lane 5 (T5): activation[4] × weight[4] → 1240/1260/1280 nm
+  Lane 6 (T6): activation[5] × weight[5] → 1300/1320/1340 nm
+
+NR-IOC decodes SFG outputs:
+  500–520 nm band → result[0]
+  530–550 nm band → result[1]
+  560–580 nm band → result[2]
+  590–610 nm band → result[3]
+  620–640 nm band → result[4]
+  650–670 nm band → result[5]
+```
+
+6 independent multiply-accumulate operations per clock cycle per PE.
+
+### Performance with 6-Lane Architecture
+
 - Total theoretical throughput: 6 × 82 PFLOPS = **492 PFLOPS** (base mode)
 - With 3^3 matrix multiply: 6 × ~148 PFLOPS = **~888 PFLOPS**
 
@@ -137,37 +206,52 @@ Weights are stored in the **CPU's 3-tier optical RAM** and streamed to Processin
 
 Weights move between tiers based on access patterns. Hot weights for the current compute operation sit in Tier 1, ready for immediate streaming to PEs.
 
-### Simplified PE Design
+### PE Design: 6-Lane Parallel SFG
 
-Each PE is now remarkably simple:
+Each PE contains 6 dedicated PPLN mixers with WDM demux/mux:
 
 ```
-          Input activation (streaming)
+       Input activation (6 triplets multiplexed)
                     ↓
-    ┌───────────────────────────────┐
-    │              PE               │
-    │                               │
-    │   Weight (streamed in) ──────┼──→ from optical RAM
-    │              ↓                │
-    │         SFG Mixer             │
-    │    (input × weight = output)  │
-    │              ↓                │
-    │      Waveguide Routing        │
-    │              ↓                │
-    └───────────────────────────────┘
+    ┌───────────────────────────────────────┐
+    │                PE (~55 × 55 μm)       │
+    │                                       │
+    │   Weight (6 triplets) ───────────────┼──→ from NR-IOC
+    │              ↓                        │
+    │         ┌─────────┐                   │
+    │         │ WDM     │ AWG 1×6 Demux     │
+    │         │ DEMUX   │                   │
+    │         └─┬┬┬┬┬┬──┘                   │
+    │           ││││││  6 lanes             │
+    │         ┌─┘│││││                      │
+    │    ┌────┐┌────┐┌────┐┌────┐┌────┐┌────┐
+    │    │PPLN││PPLN││PPLN││PPLN││PPLN││PPLN│
+    │    │ T1 ││ T2 ││ T3 ││ T4 ││ T5 ││ T6 │
+    │    └──┬─┘└──┬─┘└──┬─┘└──┬─┘└──┬─┘└──┬─┘
+    │       └──┬──┘──┬──┘──┬──┘──┬──┘──┬──┘ │
+    │         ┌┴─────────┐                   │
+    │         │ WDM MUX  │ AWG 6×1           │
+    │         └────┬─────┘                   │
+    │              ↓                        │
+    │      Waveguide Routing                │
+    │              ↓                        │
+    └───────────────────────────────────────┘
                     ↓
            Output (to next PE)
 ```
 
 **What a PE contains:**
-- SFG mixer (sum-frequency generation for ternary multiply)
+- WDM demux (AWG, splits 6 triplets into dedicated lanes)
+- 6 PPLN SFG mixers (each QPM-tuned to its triplet)
+- WDM mux (AWG, recombines 6 SFG output bands)
 - Waveguide routing (input/output/weight paths)
 
 **What a PE does NOT contain:**
 - Bistable resonators
 - Tristable flip-flops
 - Any per-PE weight storage
-- Complex nonlinear optical elements
+- Any active or electronically controlled elements
+- The chip is fully passive — all 6 mixers are fixed photonic geometry
 
 ### Why This Is Better
 
@@ -200,9 +284,13 @@ W = | +1  -1   0 |
     | -1   0  -1 |
 ```
 
-**Cycle 1:** Row 0 weights stream to PE row 0 (1064nm, 1550nm, 1310nm)
-**Cycle 2:** Row 1 weights stream to PE row 1 (1310nm, 1064nm, 1064nm)
-**Cycle 3:** Row 2 weights stream to PE row 2 (1550nm, 1310nm, 1550nm)
+With 6-lane parallelism, each cycle streams 6 weights simultaneously (one per triplet):
+
+**Cycle 1:** 6 weights stream to PE — one encoded on each triplet (T1–T6)
+**Cycle 2:** Next 6 weights stream to PE
+**Cycle 3:** Next 6 weights stream to PE
+
+Each weight is encoded on a different triplet's wavelengths by the NR-IOC. The PE's WDM demux routes each triplet to its dedicated PPLN mixer. 6 multiply-accumulate operations per cycle per PE.
 
 Weights arrive just-in-time, synchronized with the systolic data flow. The RAM controller handles prefetching and timing.
 
