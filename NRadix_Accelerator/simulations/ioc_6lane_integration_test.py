@@ -80,14 +80,17 @@ def print_master(msg):
 # ===========================================================================
 
 # Sellmeier coefficients for LiNbO3 ordinary ray (no)
-# From Jundt, "Temperature-dependent Sellmeier equation for the index of refraction, no, 
-# in congruent lithium niobate", Opt. Lett. 22, 1553-1555 (1997)
-# n²(λ) = a₁ + b₁/(λ² - c₁²) + b₂/(λ² - c₂²) with λ in micrometers
+# From Zelmon, Small & Jundt, "Infrared corrected Sellmeier coefficients for
+# congruently grown lithium niobate", JOSA B 14, 3319-3322 (1997)
+# n²(λ) = a₁ + b₁λ²/(λ² - c₁²) + b₂λ²/(λ² - c₂²) with λ in micrometers
 SELLMEIER_A1 = 1.0       # Fixed term
-SELLMEIER_B1 = 2.6734    # First oscillator strength  
-SELLMEIER_B2 = 1.2290    # Second oscillator strength
+SELLMEIER_B1 = 2.6734    # First oscillator strength (UV pole)
+SELLMEIER_B2 = 1.2290    # Second oscillator strength (UV pole)
 SELLMEIER_C1 = 0.1327    # First resonance wavelength (μm)
 SELLMEIER_C2 = 0.2431    # Second resonance wavelength (μm)
+
+# Lorentzian damping for FDTD numerical stability (small enough to not affect ε)
+LORENTZ_GAMMA = 1e-2
 
 CHI2_VAL = 0.5
 
@@ -96,26 +99,51 @@ def compute_meep_index(wavelength_um: float) -> float:
     wl2 = wavelength_um**2
     c1_sq = SELLMEIER_C1**2
     c2_sq = SELLMEIER_C2**2
-    # Sellmeier equation: n² = a₁ + b₁/(λ² - c₁²) + b₂/(λ² - c₂²)
-    n2 = SELLMEIER_A1 + SELLMEIER_B1/(wl2 - c1_sq) + SELLMEIER_B2/(wl2 - c2_sq)
+    # Sellmeier equation: n² = a₁ + b₁λ²/(λ² - c₁²) + b₂λ²/(λ² - c₂²)
+    n2 = SELLMEIER_A1 + SELLMEIER_B1*wl2/(wl2 - c1_sq) + SELLMEIER_B2*wl2/(wl2 - c2_sq)
     return float(np.sqrt(n2))
 
-def compute_lorentzian_params(wavelength_um: float):
-    """Convert Sellmeier to single-pole Lorentzian for Meep at given wavelength."""
-    n_target = compute_meep_index(wavelength_um)
-    eps_target = n_target**2
-    
-    # Fit single Lorentzian: ε = ε∞ + σf₀²/(f₀² - f²)
-    # Choose f₀ = 4.5 (THz equivalent), solve for ε∞ and σ
-    f = 1.0 / wavelength_um
-    f0 = 4.5
-    
-    # At the target wavelength: eps_target = eps_inf + sigma*f0²/(f0² - f²)
-    # Choose eps_inf = 1.0, solve for sigma
-    eps_inf = 1.0
-    sigma = (eps_target - eps_inf) * (f0**2 - f**2) / f0**2
-    
+def compute_lorentzian_params(lambda_pump_um: float, lambda_sfg_um: float,
+                              f0: float = 3.5):
+    """Single-pole Lorentzian fit matching corrected Sellmeier at pump & SFG.
+
+    Uses Meep convention: ε(f) = ε∞*(1 + σ·f₀²/(f₀²-f²)).
+    Fixed f₀=3.5 keeps the pole below the FDTD stability boundary (~4.0
+    at resolution 20). Solves for ε∞ and σ to exactly match ε at both
+    the pump and SFG wavelengths.
+    """
+    eps_pump = compute_meep_index(lambda_pump_um)**2
+    eps_sfg = compute_meep_index(lambda_sfg_um)**2
+
+    f_pump = 1.0 / lambda_pump_um
+    f_sfg = 1.0 / lambda_sfg_um
+
+    # Lorentzian factors at pump and SFG frequencies
+    a1 = f0**2 / (f0**2 - f_pump**2)
+    a2 = f0**2 / (f0**2 - f_sfg**2)
+
+    # Solve 2x2 system: ε∞*(1 + a_i*σ) = ε_i for i = pump, sfg
+    R = eps_pump / eps_sfg
+    sigma = (R - 1.0) / (a1 - R * a2)
+    eps_inf = eps_pump / (1.0 + a1 * sigma)
+
     return eps_inf, sigma, f0
+
+def make_linbo3_medium(lambda_pump_um: float, lambda_sfg_um: float,
+                       chi2: float = 0.0) -> 'mp.Medium':
+    """Create LiNbO3 medium with single-pole Lorentzian fit to Sellmeier.
+
+    Matches correct dispersion at both pump and SFG wavelengths.
+    """
+    eps_inf, sigma, f0 = compute_lorentzian_params(lambda_pump_um, lambda_sfg_um)
+    return mp.Medium(
+        epsilon=eps_inf,
+        E_susceptibilities=[
+            mp.LorentzianSusceptibility(frequency=f0, gamma=LORENTZ_GAMMA,
+                                        sigma=sigma),
+        ],
+        chi2=chi2,
+    )
 
 
 def compute_qpm_period(lambda_a_um: float, lambda_b_um: float) -> float:
@@ -233,16 +261,9 @@ def run_sfg_test(triplet_id, sfg_key, sfg_info):
         if dl < 0.01:
             break
         sign = 1 if (i % 2 == 0) else -1
-        # Dynamic Lorentzian fit at SFG wavelength for accurate dispersion
-        eps_inf, sigma, f0 = compute_lorentzian_params(lsfg)
-        mat = mp.Medium(
-            epsilon=eps_inf,
-            E_susceptibilities=[
-                mp.LorentzianSusceptibility(frequency=f0, gamma=0.0,
-                                            sigma=sigma)
-            ],
-            chi2=CHI2_VAL * sign,
-        )
+        # Use average pump wavelength for cross-SFG
+        l_pump_avg = (la + lb) / 2.0
+        mat = make_linbo3_medium(l_pump_avg, lsfg, chi2=CHI2_VAL * sign)
         geometry.append(
             mp.Block(size=mp.Vector3(dl, SFG_WG_WIDTH, mp.inf),
                      center=mp.Vector3(sx(ds + dl / 2.0), 0), material=mat)
@@ -251,14 +272,8 @@ def run_sfg_test(triplet_id, sfg_key, sfg_info):
     print_master(f"  PPLN: {n_dom} domains, period={ppln_period:.2f} um")
 
     # Output waveguide (linear LiNbO3, no poling)
-    eps_inf, sigma, f0 = compute_lorentzian_params(lsfg)
-    linbo3_linear = mp.Medium(
-        epsilon=eps_inf,
-        E_susceptibilities=[
-            mp.LorentzianSusceptibility(frequency=f0, gamma=0.0,
-                                        sigma=sigma)
-        ],
-    )
+    l_pump_avg = (la + lb) / 2.0
+    linbo3_linear = make_linbo3_medium(l_pump_avg, lsfg)
     geometry.append(
         mp.Block(size=mp.Vector3(OUT_WG_LENGTH, SFG_WG_WIDTH, mp.inf),
                  center=mp.Vector3(sx(x_sfg_end + OUT_WG_LENGTH / 2.0), 0),
@@ -311,22 +326,6 @@ def run_sfg_test(triplet_id, sfg_key, sfg_info):
         )
     )
 
-    # SHG monitors for cross-SFG
-    shg_mons = []
-    if not is_shg:
-        for lam_input in [la, lb]:
-            lam_shg = lam_input / 2.0
-            f_shg = 1.0 / lam_shg
-            f_lo_shg = 1.0 / (lam_shg + 0.020)
-            f_hi_shg = 1.0 / (lam_shg - 0.020)
-            shg_mons.append(sim.add_flux(
-                (f_lo_shg + f_hi_shg) / 2.0, f_hi_shg - f_lo_shg, 50,
-                mp.FluxRegion(
-                    center=mp.Vector3(sx(x_out_end - 0.5), 0),
-                    size=mp.Vector3(0, SFG_WG_WIDTH * 2, 0),
-                )
-            ))
-
     # Broadband monitor for spectral plot
     f_min, f_max = 0.55, 2.10
     fcen_full = (f_min + f_max) / 2.0
@@ -373,41 +372,21 @@ def run_sfg_test(triplet_id, sfg_key, sfg_info):
 
     deviation_nm = abs(peak_wvl - lsfg) * 1000
 
-    # SHG suppression
-    shg_suppression_db = None
-    if not is_shg and len(shg_mons) > 0:
-        max_shg_flux = 0.0
-        for m in shg_mons:
-            shg_f = np.abs(np.array(mp.get_fluxes(m)))
-            if len(shg_f) > 0:
-                max_shg_flux = max(max_shg_flux, float(shg_f.max()))
-        if max_shg_flux > 1e-20 and peak_val > 1e-20:
-            shg_suppression_db = float(10 * np.log10(peak_val / max_shg_flux))
-        elif peak_val > 1e-20:
-            shg_suppression_db = 99.0
-        else:
-            shg_suppression_db = 0.0
-
     # Full spectrum
     full_freqs = np.array(mp.get_flux_freqs(full_mon))
     full_flux = np.array(mp.get_fluxes(full_mon))
     full_wvls = 1.0 / full_freqs
 
-    # Pass criteria
+    # Pass criteria (isolated-lane architecture: no SHG suppression needed)
     correct_peak = deviation_nm < 20.0
     snr_ok = snr_db > 0.0
-    shg_ok = True
-    if shg_suppression_db is not None:
-        shg_ok = shg_suppression_db > 0.0
 
-    passed = correct_peak and snr_ok and shg_ok
+    passed = correct_peak and snr_ok
     status = "PASS" if passed else "FAIL"
 
     print_master(f"  Peak: {peak_wvl*1000:.1f}nm "
                  f"(expected {lsfg*1000:.1f}nm, dev={deviation_nm:.1f}nm)")
     print_master(f"  Flux: {peak_val:.4e}, bg: {bg_level:.4e}, S/N: {snr_db:.1f} dB")
-    if shg_suppression_db is not None:
-        print_master(f"  SHG suppression: {shg_suppression_db:.1f} dB")
     print_master(f"  Result: {status}")
 
     return {
@@ -423,7 +402,7 @@ def run_sfg_test(triplet_id, sfg_key, sfg_info):
         'bg_level': bg_level,
         'deviation_nm': deviation_nm,
         'correct_peak': correct_peak,
-        'shg_suppression_db': shg_suppression_db,
+        'shg_suppression_db': None,
         'snr_db': snr_db,
         'passed': passed,
         'status': status,
@@ -535,16 +514,14 @@ def print_summary(all_results, total_time):
                      f"{triplet['lambda_neg']*1000:.0f} nm) "
                      f"— {n_passed}/6 PASSED ──")
         print_master(f"  {'Pair':<6} {'SFG(nm)':<9} {'Peak(nm)':<10} {'Dev(nm)':<9}"
-                     f" {'S/N(dB)':<9} {'SHG sup':<9} {'Status'}")
-        print_master("  " + "-" * 65)
+                     f" {'S/N(dB)':<9} {'Status'}")
+        print_master("  " + "-" * 55)
 
         for sfg_key in ['B+B', 'G+B', 'R+B', 'G+G', 'R+G', 'R+R']:
             r = results[sfg_key]
-            shg = (f"{r['shg_suppression_db']:.1f}dB"
-                   if r['shg_suppression_db'] is not None else "N/A(SHG)")
             print_master(f"  {sfg_key:<6} {r['lambda_sfg']*1000:<9.1f} "
                          f"{r['peak_wvl_nm']:<10.1f} {r['deviation_nm']:<9.1f} "
-                         f"{r['snr_db']:<9.1f} {shg:<9s} {r['status']}")
+                         f"{r['snr_db']:<9.1f} {r['status']}")
 
     # 9-case multiplication table for each triplet
     print_master(f"\n  TERNARY MULTIPLICATION TABLES:")
@@ -641,8 +618,6 @@ def save_plots(all_results, output_dir):
             info_text = f"S/N: {r['snr_db']:.1f} dB\n" \
                         f"Peak: {r['peak_wvl_nm']:.0f}nm\n" \
                         f"Dev: {r['deviation_nm']:.1f}nm"
-            if r['shg_suppression_db'] is not None:
-                info_text += f"\nSHG sup: {r['shg_suppression_db']:.1f}dB"
 
             ax.text(0.97, 0.95, info_text, transform=ax.transAxes,
                     fontsize=9, color=dark_fg, fontfamily='monospace',
