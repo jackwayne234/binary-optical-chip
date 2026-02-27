@@ -1,13 +1,12 @@
-# N-Radix: Wavelength-Division Ternary Optical Accelerator
+# Binary Optical Chip
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18437600.svg)](https://doi.org/10.5281/zenodo.18437600)
 [![License: Code - MIT](https://img.shields.io/badge/License-Code%20MIT-blue.svg)](LICENSE)
 [![License: Docs - CC BY 4.0](https://img.shields.io/badge/License-Docs%20CC%20BY%204.0-lightgrey.svg)](LICENSES/CC-BY-4.0.txt)
 [![License: Hardware - CERN OHL](https://img.shields.io/badge/License-Hardware%20CERN%20OHL-orange.svg)](LICENSES/CERN-OHL.txt)
 
-> **An optical AI accelerator using wavelength-division ternary logic**
+> **2-Wavelength photonic AND array on lithium niobate — binary baseline for wavelength-division optical computing**
 >
-> Monolithic photonic chip — passive optical compute at a fraction of the power of electronic GPUs.
+> Companion project to [N-Radix (ternary)](https://github.com/jackwayne234/optical-computing-workspace). Same glass. Same SFG physics. Two wavelengths instead of three.
 
 ---
 
