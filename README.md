@@ -12,117 +12,199 @@
 
 ## What Is This?
 
-**N-Radix** is an optical AI accelerator optimized for parallel matrix operations — the same workloads that dominate AI training and inference. Instead of electrons through transistors, we use photons through waveguides on a monolithic lithium niobate (LiNbO3) chip.
+**Binary Optical Chip** is a photonic AND array accelerator implemented on a monolithic lithium niobate (LiNbO₃) chip. It uses **sum-frequency generation (SFG)** to compute binary AND operations in hardware — no transistors, no clock in the optical path, no software in the compute path.
+
+This project serves two purposes:
+
+1. **Near-term fabrication target** — binary needs only ONE SFG phase-matching condition, making it compatible with standard commercial PPLN. No custom nonlinear material required.
+2. **Proof of concept** — a working binary chip demonstrates the optical computing platform before tackling the more complex ternary multi-triplet SFG.
 
 ### How It Works
 
-Each Processing Element (PE) uses **sum-frequency generation (SFG)** to mix two optical signals. The chip is entirely passive — no clock, no transistors, no software in the compute path. Light goes in one side, computed results come out the other.
+Each Processing Element (PE) mixes two optical signals via SFG. Binary logic is encoded by wavelength selection:
 
-| Trit Value | Wavelength | Band |
-|------------|------------|------|
-| **-1** | 1550 nm | Telecom C-band |
+| Bit Value | Wavelength | Band |
+|-----------|------------|------|
 | **0** | 1310 nm | O-band |
-| **+1** | 1064 nm | Near-IR |
+| **1** | 1550 nm | Telecom C-band |
 
-All PEs physically just add (via SFG). The external controller (IOC) determines whether each PE performs:
-- **ADD/SUB** — straight ternary addition/subtraction
-- **MUL/DIV** — log-domain addition, which the IOC interprets as multiplication
+SFG acts as a **hardware AND gate**:
 
-The glass never changes. Only the encoding does.
+| Input A | Input B | SFG Output | Logic |
+|---------|---------|------------|-------|
+| 1550 nm | 1550 nm | **775 nm** | **1 AND 1 = 1** |
+| 1310 nm | 1550 nm | 711 nm | 0 AND 1 = 0 |
+| 1550 nm | 1310 nm | 711 nm | 1 AND 0 = 0 |
+| 1310 nm | 1310 nm | 655 nm | 0 AND 0 = 0 |
 
-### Performance
+Only the 775 nm SFG product (from 1550+1550) is detected as bit 1. All other SFG products are rejected by the WDM demux.
 
-| Array Size | PEs | Throughput (617 MHz) | Power | Status |
-|------------|-----|---------------------|-------|--------|
-| **9x9 MVP** | 81 | ~100 GOPS | <1W | **Fab-ready** (circuit sim 8/8 PASS) |
-| 81x81 | 6,561 | ~8.1 TFLOPS | ~5W | FDTD validated |
-| 243x243 | 59,049 | ~72.9 TFLOPS | ~20W | Architecture designed |
+### Why Binary Before Ternary?
 
-**Power efficiency comparison (243x243 projected):**
+The ternary N-Radix chip mixes **six wavelength triplets**, requiring a chirped or aperiodic PPLN grating with multiple simultaneous phase-matching conditions. This is an advanced nonlinear photonics fabrication challenge.
 
-| Chip | Throughput | Power | Efficiency |
-|------|-----------|-------|------------|
-| N-Radix 243x243 | ~73 TFLOPS | ~20W | **3.6 TFLOPS/W** |
-| NVIDIA H100 | ~990 TFLOPS (FP16) | 700W | 1.4 TFLOPS/W |
-| NVIDIA B200 | ~2,250 TFLOPS (FP16) | 1,000W | 2.3 TFLOPS/W |
+The binary chip requires **exactly one QPM condition** (1550 nm SHG → 775 nm, Λ ≈ 19.1 μm). This is a standard commercial PPLN product available from Covesion, HC Photonics, and others.
 
-*N-Radix operations are single-trit balanced ternary, not FP16. Direct FLOPS comparison is apples-to-oranges — the advantage is power efficiency and architectural simplicity, not raw throughput vs mature GPUs.*
+Binary first → validate the optical computing platform → then ternary.
 
-With 6-triplet WDM (Phase 2): ~438 TFLOPS at the same power — **~22 TFLOPS/W** (~16x H100, ~10x B200 power efficiency).
+### Array Architecture
+
+The 9×9 systolic array computes binary inner products:
+
+```
+y[j] = OR_i ( input[i] AND weight[i][j] )
+```
+
+- **Rows** carry activation signals (horizontal waveguides)
+- **Columns** carry weight signals (vertical waveguides)
+- **Each PE** produces a 775 nm photon if and only if both activation AND weight are 1
+- **Column output** is the logical OR of all PE products — any 775 nm detected → output = 1
+
+The chip is entirely passive in the accelerator region. No clock, no transistors, no software in the optical path.
 
 ---
 
-## Tape-Out Status
+## Fabrication Advantage
 
-The **9x9 monolithic chip** (1095 x 695 um, X-cut LiNbO3) is ready for foundry submission.
+| Criterion | Binary (This Chip) | Ternary N-Radix |
+|-----------|-------------------|-----------------|
+| SFG phase-match conditions | **1** (1550→775 nm SHG) | 6+ (6-triplet mixer) |
+| PPLN type | **Standard commercial** (Λ ≈ 19.1 μm) | Custom chirped/aperiodic |
+| Wavelengths | **2** (1310 nm, 1550 nm) | 3 (1064, 1310, 1550 nm) |
+| Laser sources | **2** | 3 |
+| Ring resonators | **Not required** | Required |
+| IOC complexity | **2-state MZI** | 3-state MZI |
+| Foundry risk | **Low** — proven PPLN process | Higher — multi-QPM nonlinear |
 
-| Milestone | Status |
-|-----------|--------|
-| Circuit-level simulation (SAX) | **8/8 tests PASS** |
-| Monte Carlo process variation (10,000 trials) | **99.82% yield** |
-| Thermal sensitivity analysis | **30C passive window (15-45C)** |
-| End-to-end functional test plan | **Complete** — 3 test levels, failure diagnosis |
-| Post-fab test bench design | **Complete** — 4 budget tiers ($1.8k-$16.5k) |
-| Foundry submission package | **Complete** — emails, timeline, risk register |
+---
 
-### Circuit Simulation Results (8/8 PASS)
+## Simulation Status
+
+The 9×9 binary optical chip circuit simulation is complete.
 
 | Test | Description | Result |
 |------|-------------|--------|
-| 1 | Single PE multiplication table (all 9 trit combinations) | PASS |
-| 2 | Identity matrix (9x9) | PASS |
-| 3 | All-ones stress test | PASS |
-| 4 | Single nonzero (isolation/crosstalk check) | PASS |
-| 5 | Mixed 3x3 values | PASS |
-| 6 | Tridiagonal Laplacian pattern | PASS |
-| 7 | IOC domain modes (ADD vs MUL equivalence) | PASS |
-| 8 | Loss budget (worst-case power margin: 17.6 dB) | PASS |
+| 1 | Single PE — all 4 binary AND combinations | **PASS** |
+| 2 | Identity matrix (9×9) | **PASS** |
+| 3 | All-ones stress test | **PASS** |
+| 4 | All-zeros baseline | **PASS** |
+| 5 | Single nonzero (PE isolation check) | **PASS** |
+| 6 | Mixed 3×3 binary pattern | **PASS** |
+| 7 | IOC domain modes (AND / OR / XOR equivalence) | **PASS** |
+| 8 | Loss budget (worst-case power margin) | **PASS — 18.9 dB** |
+| 9 | Binary vs ternary radix economy analysis | **PASS** |
 
-### FDTD Validation (All Sizes)
+**9/9 tests PASS.** Power margin: 18.9 dB at worst-case PE[0,8].
 
-| Array | Status |
-|-------|--------|
-| 3x3 | PASSED |
-| 9x9 | PASSED |
-| 27x27 (2.4% clock skew) | PASSED |
-| 81x81 (6,561 PEs) | **PASSED** |
+---
+
+## Performance
+
+| Array Size | PEs | Throughput | Power | Status |
+|------------|-----|-----------|-------|--------|
+| **9×9 MVP** | 81 | ~50 GOPS | <1W | **Simulation complete** |
+| 81×81 | 6,561 | ~4 TOPS | ~4W | Architecture designed |
+| 243×243 | 59,049 | ~36 TOPS | ~16W | Architecture designed |
+
+*Binary operations carry 1 bit/symbol vs ternary's 1.585 bits/symbol. Binary chip provides the practical near-term fabrication path.*
 
 ---
 
 ## Repository Structure
 
 ```
-Optical_computing/
-├── NRadix_Accelerator/          # <-- MAIN PROJECT
-│   ├── architecture/            # Monolithic chip generators (9x9, 243x243)
-│   ├── circuit_sim/             # SAX circuit simulation + interactive demo
-│   │   ├── simulate_9x9.py     # Full-chip simulation (8/8 tests)
-│   │   ├── simulate_6triplet.py # WDM cross-coupling analysis
-│   │   └── demo.py             # Tkinter visual demo
-│   ├── driver/                  # NR-IOC driver (C + Python bindings)
-│   ├── components/              # Photonic component models
-│   ├── simulations/             # Monte Carlo, thermal, FDTD tests
-│   ├── docs/                    # Full tape-out documentation package
-│   └── papers/                  # Reference papers
+binary-optical-chip/
+├── Binary_Accelerator/          # <-- MAIN PROJECT
+│   ├── architecture/            # Monolithic chip GDS generators
+│   │   └── monolithic_chip_binary_9x9.py
+│   ├── circuit_sim/             # Circuit simulation
+│   │   └── simulate_binary_9x9.py   # Full-chip sim (9/9 tests PASS)
+│   ├── simulations/             # Monte Carlo, thermal, yield analysis
+│   │   ├── monte_carlo_binary_9x9.py
+│   │   └── thermal_sweep_binary_9x9.py
+│   └── docs/                    # Full tape-out documentation
+│       ├── TAPEOUT_READINESS.md
+│       ├── CIRCUIT_SIMULATION_PLAN.md
+│       ├── MONTE_CARLO_ANALYSIS.md
+│       ├── THERMAL_SENSITIVITY.md
+│       ├── FOUNDRY_SUBMISSION_PACKAGE.md
+│       ├── FUNCTIONAL_TEST_PLAN.md
+│       ├── TEST_BENCH_DESIGN.md
+│       ├── DRC_RULES.md
+│       ├── LAYER_MAPPING.md
+│       ├── CHIP_INTERFACE.md
+│       ├── PACKAGING_SPEC.md
+│       ├── MPW_RETICLE_PLAN.md
+│       └── DRIVER_SPEC.md
 │
-├── CPU_Phases/                  # Legacy: General-purpose CPU prototypes
-├── Research/                    # Shared research, FDTD simulations
-└── tools/                       # Research search tool, utilities
+├── NRadix_Accelerator/          # Ternary companion (reference)
+└── CPU_Phases/                  # Legacy optical CPU prototypes
 ```
 
 ---
 
-## The Core Insight
+## Quick Start
 
-Ternary (base-3) logic is mathematically optimal for computing — closest integer to Euler's number *e* (~2.718), which minimizes the radix economy cost function. But electronic ternary requires ~40x more transistors per trit (the Setun problem, known since 1958).
+```bash
+# Run the circuit simulation (9/9 tests)
+cd Binary_Accelerator/circuit_sim/
+python simulate_binary_9x9.py
 
-**We bypass this entirely:** use light wavelengths instead of voltage levels. Three wavelengths are as naturally distinct as two — the material science penalty disappears.
+# Run Monte Carlo yield analysis
+cd Binary_Accelerator/simulations/
+python monte_carlo_binary_9x9.py
 
-This unlocks:
-1. **Ternary's 1.58x information density** — each trit carries log₂(3) bits
-2. **Photonic parallelism** — wavelength-division multiplexing for 6x parallel channels
-3. **Log-domain multiplication** — multiply by adding exponents (hardware just adds)
-4. **Passive compute** — no clock, no transistors, no power in the optical path
+# Run thermal sensitivity sweep
+python thermal_sweep_binary_9x9.py
+```
+
+Dependencies: `numpy`, `matplotlib` (standard scientific Python).
+
+```bash
+python3 -m venv .venv && .venv/bin/pip install numpy matplotlib
+```
+
+---
+
+## Architecture
+
+The chip is **monolithic** — one X-cut LiNbO₃ (TFLN) substrate with two regions:
+
+1. **IOC Region** (active): 2-state MZI modulators for input encoding, WDM demux for output decoding
+2. **Accelerator Region** (passive): 9×9 systolic array of SFG AND gates
+
+Photon arrival at each PE is synchronized by **matched waveguide path lengths** (validated: 0.000 ps spread). No clock distribution needed in the passive region — timing is geometry.
+
+### PPLN Specification
+
+Single phase-matching condition only:
+
+| Parameter | Value |
+|-----------|-------|
+| Process | SHG (second harmonic generation) |
+| Pump wavelength | 1550 nm (C-band) |
+| Output wavelength | 775 nm (near-IR) |
+| QPM period (Λ) | ~19.1 μm |
+| PPLN type | Periodic poling, uniform grating |
+| Temperature sensitivity | ~0.05 nm/°C (well within 15-45°C window) |
+
+This is a **standard commercial PPLN configuration**, available from Covesion (MSHG1550-0.5), HC Photonics, and Stratophase. No custom aperiodic grating required.
+
+---
+
+## Binary vs Ternary: The Trade-Off
+
+| Metric | Binary | Ternary (N-Radix) |
+|--------|--------|-------------------|
+| Information density | 1.000 bit/symbol | **1.585 bits/trit** (+58.5%) |
+| PPLN complexity | **1 QPM condition** | 6 QPM conditions |
+| Fab risk | **Low** | Higher |
+| Time to first chip | **Shorter** | Longer |
+| Long-term efficiency | Baseline | **+58.5% vs binary** |
+
+**Conclusion:** Binary gets silicon on the table first. Ternary is the long-term target.
+
+The wavelength cost of adding a third state (one more laser source) is O(1). The transistor cost of ternary electronics is O(N). Optical ternary wins at scale — but binary proves the concept.
 
 ---
 
@@ -130,62 +212,19 @@ This unlocks:
 
 | Doc | Description |
 |-----|-------------|
-| [Tape-Out Readiness](NRadix_Accelerator/docs/TAPEOUT_READINESS.md) | Master checklist — all 5 gaps resolved |
-| [Circuit Simulation](NRadix_Accelerator/docs/CIRCUIT_SIMULATION_PLAN.md) | SAX simulation plan & results (8/8 PASS) |
-| [Monte Carlo Analysis](NRadix_Accelerator/docs/MONTE_CARLO_ANALYSIS.md) | 10,000 trials, 99.82% yield |
-| [Thermal Sensitivity](NRadix_Accelerator/docs/THERMAL_SENSITIVITY.md) | 15-45C passive operating window |
-| [Chip Interface](NRadix_Accelerator/docs/CHIP_INTERFACE.md) | How to connect to the chip |
-| [Foundry Submission](NRadix_Accelerator/docs/FOUNDRY_SUBMISSION_PACKAGE.md) | Pre-written emails, timeline, budget |
-| [Functional Test Plan](NRadix_Accelerator/docs/FUNCTIONAL_TEST_PLAN.md) | Post-fab test procedures |
-| [Test Bench Design](NRadix_Accelerator/docs/TEST_BENCH_DESIGN.md) | Equipment BOM, 4 budget tiers |
-| [Driver Spec](NRadix_Accelerator/docs/DRIVER_SPEC.md) | NR-IOC driver details |
-| [DRC Rules](NRadix_Accelerator/docs/DRC_RULES.md) | Design rules for fabrication |
-| [Packaging](NRadix_Accelerator/docs/PACKAGING_SPEC.md) | Fiber coupling, wire bonding |
-| [Layer Mapping](NRadix_Accelerator/docs/LAYER_MAPPING.md) | GDS layers per foundry |
-| [MPW Plan](NRadix_Accelerator/docs/MPW_RETICLE_PLAN.md) | Multi-project wafer strategy |
-
----
-
-## Quick Start
-
-```bash
-# Run the circuit simulation (8/8 tests)
-cd NRadix_Accelerator/circuit_sim/
-python simulate_9x9.py
-
-# Launch the interactive demo (Tkinter GUI)
-python demo.py
-
-# Run Monte Carlo yield analysis
-cd NRadix_Accelerator/simulations/
-python monte_carlo_9x9.py
-```
-
----
-
-## Architecture
-
-The chip is **monolithic** — one substrate with two regions:
-
-1. **IOC Region** (active): Kerr self-pulsing clock (617 MHz), input encoding, output decoding
-2. **Accelerator Region** (passive): Systolic array of PEs — waveguides, SFG mixers, ring resonators
-
-Photon arrival at each PE is synchronized by **matched waveguide path lengths** (validated: 0.000 ps spread). No clock distribution needed in the passive region — timing is geometry.
-
-Weights are **streamed from optical RAM**, not stored per-PE. Each PE is just a mixer + routing — simple, high-yield passive optics.
-
----
-
-## CPU Phases (Legacy)
-
-The [`CPU_Phases/`](CPU_Phases/) directory contains earlier prototyping work for a general-purpose optical CPU. This work is preserved but not the current focus.
-
-| Phase | Description | Status |
-|-------|-------------|--------|
-| Phase 1 | Visible light RGB prototype (24"x24") | Parts ordered |
-| Phase 2 | 10GHz fiber benchtop | Planning |
-| Phase 3 | Silicon photonics chip | Seeking funding |
-| Phase 4 | DIY fab (contingency) | On demand |
+| [Tape-Out Readiness](Binary_Accelerator/docs/TAPEOUT_READINESS.md) | Master checklist — simulation complete |
+| [Circuit Simulation](Binary_Accelerator/docs/CIRCUIT_SIMULATION_PLAN.md) | 9/9 tests PASS |
+| [Monte Carlo Analysis](Binary_Accelerator/docs/MONTE_CARLO_ANALYSIS.md) | Process variation yield |
+| [Thermal Sensitivity](Binary_Accelerator/docs/THERMAL_SENSITIVITY.md) | Operating temperature window |
+| [Foundry Submission](Binary_Accelerator/docs/FOUNDRY_SUBMISSION_PACKAGE.md) | Pre-written emails, timeline, budget |
+| [Functional Test Plan](Binary_Accelerator/docs/FUNCTIONAL_TEST_PLAN.md) | Post-fab test procedures |
+| [Test Bench Design](Binary_Accelerator/docs/TEST_BENCH_DESIGN.md) | Equipment BOM, 4 budget tiers |
+| [DRC Rules](Binary_Accelerator/docs/DRC_RULES.md) | Design rules for fabrication |
+| [Layer Mapping](Binary_Accelerator/docs/LAYER_MAPPING.md) | GDS layers per foundry |
+| [Chip Interface](Binary_Accelerator/docs/CHIP_INTERFACE.md) | How to connect to the chip |
+| [Packaging](Binary_Accelerator/docs/PACKAGING_SPEC.md) | Fiber coupling, wire bonding |
+| [MPW Plan](Binary_Accelerator/docs/MPW_RETICLE_PLAN.md) | Multi-project wafer strategy |
+| [Driver Spec](Binary_Accelerator/docs/DRIVER_SPEC.md) | Binary IOC driver details |
 
 ---
 
@@ -197,55 +236,6 @@ This is an open research project. Contributions welcome:
 - **Software**: Driver development, simulation optimization
 - **Theory**: Architecture analysis, encoding schemes
 - **Documentation**: Technical writing, diagrams
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
-
----
-
-## Citation
-
-### Paper v2 (Architecture)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18501296.svg)](https://doi.org/10.5281/zenodo.18501296)
-
-```bibtex
-@misc{riner2026nradix,
-  author = {Riner, Christopher},
-  title = {Wavelength-Division Ternary Computing II: The N-Radix Optical AI Accelerator},
-  year = {2026},
-  publisher = {Zenodo},
-  doi = {10.5281/zenodo.18501296},
-  url = {https://doi.org/10.5281/zenodo.18501296}
-}
-```
-
-### Paper v1 (Theory)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18437600.svg)](https://doi.org/10.5281/zenodo.18437600)
-
-```bibtex
-@misc{riner2026wavelength,
-  author = {Riner, Christopher},
-  title = {Wavelength-Division Ternary Logic: Bypassing the Radix Economy Penalty in Optical Computing},
-  year = {2026},
-  publisher = {Zenodo},
-  doi = {10.5281/zenodo.18437600},
-  url = {https://doi.org/10.5281/zenodo.18437600}
-}
-```
-
-### Software (Implementation)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18450479.svg)](https://doi.org/10.5281/zenodo.18450479)
-
-```bibtex
-@software{riner2026wavelengthsoftware,
-  author = {Riner, Christopher},
-  title = {Wavelength-Division Ternary Optical Computer},
-  year = {2026},
-  publisher = {Zenodo},
-  version = {v1.0.1},
-  doi = {10.5281/zenodo.18450479},
-  url = {https://doi.org/10.5281/zenodo.18450479}
-}
-```
 
 ---
 
@@ -261,4 +251,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
 **Author:** Christopher Riner
 **Contact:** chrisriner45@gmail.com
+**GitHub:** jackwayne234
 **Location:** Chesapeake, VA, USA
