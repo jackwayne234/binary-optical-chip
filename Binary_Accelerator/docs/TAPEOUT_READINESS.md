@@ -10,8 +10,8 @@
 | # | Gap | Status | Document | Priority |
 |---|-----|--------|----------|----------|
 | 1 | Circuit-level simulation (full chip) | **COMPLETE** — 9/9 tests PASS. Single QPM condition (1550→775nm). Power margin: 18.9 dB | [CIRCUIT_SIMULATION_PLAN.md](CIRCUIT_SIMULATION_PLAN.md) | CRITICAL |
-| 2 | Monte Carlo process variation analysis | **PENDING** — run `monte_carlo_binary_9x9.py`. Expected yield: >99.5% (1 QPM condition) | [MONTE_CARLO_ANALYSIS.md](MONTE_CARLO_ANALYSIS.md) | CRITICAL |
-| 3 | Thermal sensitivity analysis | **PENDING** — run `thermal_sweep_binary_9x9.py`. Expected: 40°C passive window | [THERMAL_SENSITIVITY.md](THERMAL_SENSITIVITY.md) | HIGH |
+| 2 | Monte Carlo process variation analysis | **COMPLETE** — 99.95% yield (9,995/10,000 trials), FAB READY | [MONTE_CARLO_ANALYSIS.md](MONTE_CARLO_ANALYSIS.md) | CRITICAL |
+| 3 | Thermal sensitivity analysis | **COMPLETE** — 15°C to 55°C passive window, all 41 steps PASS | [THERMAL_SENSITIVITY.md](THERMAL_SENSITIVITY.md) | HIGH |
 | 4 | End-to-end functional test plan | **PENDING** — 3 test levels, failure diagnosis | [FUNCTIONAL_TEST_PLAN.md](FUNCTIONAL_TEST_PLAN.md) | HIGH |
 | 5 | Post-fab test bench design & BOM | **PENDING** — 4 budget tiers, FPGA firmware spec | [TEST_BENCH_DESIGN.md](TEST_BENCH_DESIGN.md) | MEDIUM |
 
@@ -38,37 +38,21 @@
 
 ## Gap 2: Monte Carlo Process Variation Analysis (CRITICAL)
 
-**Status:** PENDING — run `Binary_Accelerator/simulations/monte_carlo_binary_9x9.py`
+**Status:** COMPLETE — 2026-02-27
 
-**What it tests:**
-- 10,000 random chip instances with TFLN foundry tolerances
-- Waveguide width: 500nm ±20nm (3σ)
-- PPLN period: 19.1μm ±0.2μm (1% tolerance)
-- Waveguide loss: 2.0 dB/cm ±0.5 dB/cm
-- Edge coupling: 1.0 dB ±0.3 dB
-
-**5 validation checks per trial:**
-1. Loss budget — 775nm signal reaches detector with positive margin
-2. PPLN efficiency — SFG conversion stays above 3% threshold
-3. WDM separation — 775/1310/1550nm remain separable
-4. Timing skew — equalized paths stay within 0.5 ps
-5. Detector current — photocurrent exceeds 0.5 μA threshold
-
-**Expected yield:** >99.5% (binary advantage: 1 QPM condition vs 6 for ternary)
-
-**Success criteria:** Yield ≥ 95% across all 5 checks
-
-**To run:**
-```bash
-cd Binary_Accelerator/simulations/
-python3 monte_carlo_binary_9x9.py
-```
+**Results (10,000 trials):**
+- **Yield: 99.95%** (9,995/10,000 chips pass)
+- loss_budget: 100.00% | ppln_efficiency: 99.95% | wavelength_sep: 100.00%
+- timing: 100.00% | detector: 100.00%
+- Power margin: mean=+16.5 dB, min=+8.9 dB (p1=+14.1 dB)
+- PPLN efficiency: mean=9.3%, std=1.3%
+- **Verdict: FAB READY**
 
 ---
 
 ## Gap 3: Thermal Sensitivity Analysis (HIGH)
 
-**Status:** PENDING — run `Binary_Accelerator/simulations/thermal_sweep_binary_9x9.py`
+**Status:** COMPLETE — 2026-02-27
 
 **What it tests:**
 - Temperature sweep: 15°C to 55°C (40°C range)
@@ -144,8 +128,8 @@ When all 5 gaps are closed:
 - [x] Circuit simulation confirms end-to-end functionality (9/9 PASS)
 - [ ] Final GDS generated from `monolithic_chip_binary_9x9.py` (requires gdsfactory)
 - [ ] GDS passes KLayout DRC with zero violations
-- [ ] Monte Carlo yield ≥ 95% (run monte_carlo_binary_9x9.py)
-- [ ] Thermal analysis defines operating window (run thermal_sweep_binary_9x9.py)
+- [x] Monte Carlo yield ≥ 95% — **PASS: 99.95%** (2026-02-27)
+- [x] Thermal analysis defines operating window — **PASS: 15–55°C** (2026-02-27)
 - [ ] Test bench BOM ordered / on hand
 - [ ] Functional test plan reviewed
 - [ ] Foundry (HyperLight) contacted with design package

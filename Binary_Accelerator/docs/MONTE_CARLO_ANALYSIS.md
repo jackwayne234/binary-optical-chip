@@ -1,6 +1,6 @@
 # Monte Carlo Process Variation Analysis — Binary Optical Chip 9×9
 
-**Status:** PENDING (run `monte_carlo_binary_9x9.py` to populate results)
+**Status:** COMPLETE — 10,000 trials run 2026-02-27
 **Script:** `Binary_Accelerator/simulations/monte_carlo_binary_9x9.py`
 **Last updated:** 2026-02-27
 
@@ -120,31 +120,33 @@ For ternary: need 6 QPM conditions simultaneously, each with its own period.
 
 ## Results
 
-**Status:** PENDING — run `monte_carlo_binary_9x9.py` to generate results.
+**Run date:** 2026-02-27 | **Trials:** 10,000
 
-```bash
-cd Binary_Accelerator/simulations/
-python3 monte_carlo_binary_9x9.py
-```
-
-Expected output format:
 ```
 ╔════════════════════════════════════════════════════════════════════╗
 ║  MONTE CARLO RESULTS — BINARY OPTICAL CHIP 9×9                  ║
 ╠════════════════════════════════════════════════════════════════════╣
 ║  Trials:       10,000                                            ║
-║  Passing:       X,XXX                                            ║
-║  YIELD:          XX.XX%                                          ║
+║  Passing:       9,995                                            ║
+║  YIELD:        99.95%                                            ║
 ╠════════════════════════════════════════════════════════════════════╣
 ║  Per-check yields:                                               ║
-║    loss_budget             XX.XX%  ████████████████████         ║
-║    ppln_efficiency         XX.XX%  ████████████████████         ║
-║    wavelength_sep         ~100.0%  ████████████████████         ║
-║    timing                  XX.XX%  ████████████████████         ║
-║    detector                XX.XX%  ████████████████████         ║
+║    loss_budget            100.00%  ████████████████████         ║
+║    ppln_efficiency         99.95%  ███████████████████          ║
+║    wavelength_sep         100.00%  ████████████████████         ║
+║    timing                 100.00%  ████████████████████         ║
+║    detector               100.00%  ████████████████████         ║
+╠════════════════════════════════════════════════════════════════════╣
+║  Power margin (dB): mean=+16.5  std=0.9  min=+8.9  p1=+14.1   ║
+║  PPLN efficiency:   mean=9.3%   std=1.3%  min=2.4%  p1=5.8%   ║
+║  WDM separation:    mean=535nm  min=535nm  (binary: huge gap)   ║
+║  Timing skew:       mean=0.0006ps  max=0.003ps                  ║
+╠════════════════════════════════════════════════════════════════════╣
+║  Verdict: EXCELLENT (>99%) — FAB READY                          ║
+╚════════════════════════════════════════════════════════════════════╝
 ```
 
-Results will be updated here after running.
+**Only 5 chips failed in 10,000 trials.** All failures were PPLN efficiency — period variation reducing sinc² conversion below threshold. No loss budget failures, no WDM separation failures, no timing failures.
 
 ---
 

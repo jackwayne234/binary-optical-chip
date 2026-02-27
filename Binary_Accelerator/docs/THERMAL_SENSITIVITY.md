@@ -1,6 +1,6 @@
 # Thermal Sensitivity Analysis — Binary Optical Chip 9×9
 
-**Status:** PENDING (run `thermal_sweep_binary_9x9.py` to generate plots)
+**Status:** COMPLETE — sweep run 2026-02-27
 **Script:** `Binary_Accelerator/simulations/thermal_sweep_binary_9x9.py`
 **Last updated:** 2026-02-27
 
@@ -98,25 +98,32 @@ The MZI modulator passive phase drift causes a voltage offset at the operating p
 
 ## Thermal Sweep Results
 
-**Status:** PENDING — run `thermal_sweep_binary_9x9.py` to generate plots.
+**Run date:** 2026-02-27 | **Range:** 15°C → 55°C (41 steps)
 
-```bash
-cd Binary_Accelerator/simulations/
-python3 thermal_sweep_binary_9x9.py
+```
+  Temp   SFG Eff      PM λ   Sep 775-1310   Sep 775-1550   Pass
+  ---------------------------------------------------------------
+   15C     9.81%  1549.500nm         535.1nm         775.1nm    ✓
+   19C     9.93%  1549.700nm         535.0nm         775.1nm    ✓
+   23C     9.99%  1549.900nm         535.0nm         775.0nm    ✓
+   25C    10.00%  1550.000nm         535.0nm         775.0nm    ✓  ← nominal
+   27C     9.99%  1550.100nm         535.0nm         775.0nm    ✓
+   31C     9.93%  1550.300nm         535.0nm         774.9nm    ✓
+   35C     9.81%  1550.500nm         534.9nm         774.9nm    ✓
+   39C     9.64%  1550.700nm         534.9nm         774.9nm    ✓
+   43C     9.40%  1550.900nm         534.9nm         774.8nm    ✓
+   47C     9.12%  1551.100nm         534.8nm         774.8nm    ✓
+   51C     8.79%  1551.300nm         534.8nm         774.8nm    ✓
+   55C     8.41%  1551.500nm         534.8nm         774.7nm    ✓
 ```
 
-Expected output:
-```
-  Temp  SFG Eff  PM λ      Sep 775-1310   Sep 775-1550   Pass
-  15°C   10.0%  1549.5nm    535.0nm        774.5nm         ✓
-  20°C   10.0%  1549.8nm    535.1nm        774.8nm         ✓
-  25°C   10.0%  1550.0nm    535.2nm        775.0nm         ✓
-  30°C   10.0%  1550.3nm    535.3nm        775.3nm         ✓
-  ...
-  55°C    X.X%  1551.5nm    535.8nm        776.5nm         ✓/✗
-```
+**Operating window: 15°C to 55°C (40°C range). All 41 steps PASS.**
 
-Results will be updated here after running.
+Key observations:
+- SFG efficiency: 8.4% at 55°C → 10.0% at 25°C — still passes everywhere
+- PPLN phase-match drifts +2.0 nm over 40°C — absorbed by 18.9 dB power margin
+- WDM separation stays >534 nm — trivially large at all temperatures
+- No failures in the entire 15–55°C window
 
 ---
 
